@@ -13,7 +13,7 @@
         .datos strong { display: inline-block; width: 150px; }
         table { width: 100%; border-collapse: collapse; margin-top: 14px; }
         th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
-        th { background: #1B4F8A; color: #fff; }
+        th { background: #26437D; color: #fff; }
         .total { text-align: right; font-size: 13px; margin-top: 10px; }
         .estatus { display: inline-block; padding: 2px 8px; border-radius: 10px; color: #fff; font-size: 10px; }
         footer { margin-top: 30px; font-size: 9px; color: #9ca3af; }

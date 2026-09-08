@@ -135,7 +135,7 @@
                 var ctx = canvas.getContext('2d');
                 ctx.lineWidth = 2;
                 ctx.lineCap = 'round';
-                ctx.strokeStyle = '#1B4F8A';
+                ctx.strokeStyle = '#26437D';
                 var dibujando = false;
                 var trazado = false;
 

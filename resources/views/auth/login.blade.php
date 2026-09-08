@@ -4,10 +4,14 @@
     <meta charset="utf-8">
     <title>Vital Clean — Acceso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --azul: #1B4F8A;
-            --azul-claro: #2980B9;
+            --azul: #26437D;
+            --azul-claro: #17A9E0;
             --blanco: #FFFFFF;
             --gris-claro: #F5F5F5;
             --rojo: #C0392B;
@@ -19,7 +23,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", sans-serif;
             background: var(--azul);
         }
         .login-card {
@@ -75,19 +79,13 @@
             margin-bottom: 1rem;
         }
 
-        /* Identidad de marca — ver resources/views/partials/logo.blade.php */
-        .vc-logo { display: flex; align-items: center; gap: .5rem; }
-        .vc-logo--stacked { flex-direction: column; text-align: center; gap: .1rem; margin-bottom: .5rem; }
-        .vc-logo-icon { flex-shrink: 0; display: block; }
-        .vc-logo-text { display: flex; flex-direction: column; line-height: 1; }
-        .vc-logo-super { font-size: .65rem; letter-spacing: .18em; font-weight: 600; text-transform: uppercase; }
-        .vc-logo-main { font-size: 2.1rem; font-weight: 900; letter-spacing: .02em; font-family: Arial, "Helvetica Neue", sans-serif; }
-        .vc-logo-script { font-size: 1.7rem; font-style: italic; font-family: "Brush Script MT", "Segoe Script", cursive; margin-top: -.2rem; }
+        /* Identidad de marca — logo real del cliente (resources/images/logo-vital-clean.png) */
+        .login-logo { display: block; width: 168px; max-width: 70%; margin: 0 auto .75rem; }
     </style>
 </head>
 <body>
     <div class="login-card">
-        @include('partials.logo', ['size' => 88, 'stacked' => true])
+        <img src="{{ asset('images/logo-vital-clean.png') }}" alt="Lavandería Vital Clean" class="login-logo">
         <p class="subtitle">Sistema de Gestión Operativa</p>
 
         @if ($errors->any())

@@ -5,11 +5,21 @@
     <title>@yield('title', 'Vital Clean')</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    {{-- Paleta de colores tomada del SRS v1.1 §12 (Azul industrial, Rojo, Amarillo, Azul claro). --}}
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" href="{{ asset('images/logo-vital-clean.png') }}" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
+    {{--
+        Paleta de colores — imagen de marca Vital Clean (azul marino + acento
+        cian, referencia: avada.website/plumber). --rojo y --amarillo se
+        conservan como colores funcionales (errores, cancelado, prioridad y
+        estatus RN-07), no de marca.
+    --}}
     <style>
         :root {
-            --azul: #1B4F8A;
-            --azul-claro: #2980B9;
+            --azul: #26437D;
+            --azul-claro: #17A9E0;
             --blanco: #FFFFFF;
             --gris-claro: #F5F5F5;
             --rojo: #C0392B;
@@ -19,7 +29,7 @@
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", sans-serif;
             background: var(--gris-claro);
             color: var(--texto);
         }
@@ -140,7 +150,7 @@
             position: relative; z-index: 1;
         }
         .timeline-step.completado .timeline-circle { background: #28a745; border-color: #28a745; color: var(--blanco); }
-        .timeline-step.actual .timeline-circle { background: var(--azul); border-color: var(--azul); color: var(--blanco); box-shadow: 0 0 0 4px rgba(27,79,138,.18); }
+        .timeline-step.actual .timeline-circle { background: var(--azul); border-color: var(--azul); color: var(--blanco); box-shadow: 0 0 0 4px rgba(38,67,125,.18); }
         .timeline-step .timeline-label { margin-top: .5rem; font-size: .8rem; color: #9ca3af; }
         .timeline-step.completado .timeline-label,
         .timeline-step.actual .timeline-label { color: var(--texto); font-weight: 600; }
