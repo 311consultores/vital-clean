@@ -4,6 +4,7 @@
 
 @php
     $esAdmin = auth()->user()->rol === 'ADMIN';
+    $esVendedor = auth()->user()->rol === 'VENDEDOR';
     $soloLectura = $orden->estatus_orden !== 'LISTO' && ! $esAdmin;
     $total = $orden->detalle->sum('subtotal');
 @endphp
@@ -18,6 +19,13 @@
         </div>
         <span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span>
     </div>
+
+    @if ($orden->padre)
+        <div class="alert alert-status no-print">
+            Esta es una subnota del folio VC-{{ str_pad($orden->padre->folio_sistema, 4, '0', STR_PAD_LEFT) }}
+            / {{ $orden->padre->folio_fisico }} (mercancía que quedó pendiente de una entrega parcial anterior).
+        </div>
+    @endif
 
     @if ($errors->any())
         <div class="alert alert-error no-print">
@@ -54,28 +62,80 @@
 
         <table class="data-table" style="margin-top:1rem;">
             <thead>
-                <tr><th>Prenda</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr>
+                <tr>
+                    <th>Prenda</th>
+                    <th>Cantidad</th>
+                    @unless ($esVendedor)
+                        <th>Precio</th>
+                        <th>Subtotal</th>
+                    @endunless
+                    @unless ($soloLectura)
+                        <th>Entregar ahora</th>
+                    @endunless
+                </tr>
             </thead>
             <tbody>
                 @foreach ($orden->detalle as $linea)
+                    @php $totalLinea = $linea->cantidad_salida ?? $linea->cantidad_entrada; @endphp
                     <tr>
                         <td>{{ $linea->servicio->descripcion }}</td>
-                        <td>{{ $linea->cantidad_salida ?? $linea->cantidad_entrada }}</td>
-                        <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
-                        <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : 'Pendiente' }}</td>
+                        <td>{{ $totalLinea }}</td>
+                        @unless ($esVendedor)
+                            <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
+                            <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : 'Pendiente' }}</td>
+                        @endunless
+                        @unless ($soloLectura)
+                            <td>
+                                <input type="number" name="entregado[{{ $linea->id_detalle }}]"
+                                       class="input-entregado" data-total="{{ $totalLinea }}" data-id="{{ $linea->id_detalle }}"
+                                       min="0" max="{{ $totalLinea }}"
+                                       value="{{ old('entregado.'.$linea->id_detalle, $totalLinea) }}"
+                                       style="width:4.5rem;" form="form-confirmar">
+                                <div class="pendiente-linea" id="pendiente-{{ $linea->id_detalle }}" style="font-size:.75rem; color:#9ca3af;"></div>
+                            </td>
+                        @endunless
                     </tr>
                 @endforeach
             </tbody>
         </table>
-        <p style="text-align:right; font-size:1.05rem; margin-top:.75rem;">
-            <strong>Total: {{ $total !== null ? '$'.number_format($total, 2) : 'Pendiente' }}</strong>
-        </p>
+        @unless ($esVendedor)
+            <p style="text-align:right; font-size:1.05rem; margin-top:.75rem;">
+                <strong>Total: {{ $total !== null ? '$'.number_format($total, 2) : 'Pendiente' }}</strong>
+            </p>
+        @endunless
     </div>
+
+    @if ($orden->subnotas->isNotEmpty())
+        <div class="card no-print" style="max-width:640px; margin-top:1rem;">
+            <h2 style="font-size:1rem; margin-top:0;">Subnotas generadas por entrega parcial</h2>
+            <ul style="margin:0; padding-left:1.2rem;">
+                @foreach ($orden->subnotas as $sub)
+                    <li>
+                        <a href="{{ route('entrega.remision', $sub) }}">
+                            VC-{{ str_pad($sub->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $sub->folio_fisico }}
+                        </a>
+                        — <span class="badge badge-{{ strtolower($sub->estatus_orden) }}">{{ $sub->estatus_orden }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     @unless ($soloLectura)
         <div class="card no-print" style="max-width:640px; margin-top:1rem;">
+            <div id="grupo-folio-subnota" class="form-group" style="display:none;">
+                <label for="folio_fisico_subnota">Folio físico de la subnota</label>
+                <input type="text" id="folio_fisico_subnota" name="folio_fisico_subnota" form="form-confirmar"
+                       value="{{ old('folio_fisico_subnota') }}" maxlength="20" placeholder="Ej. 02150">
+                @error('folio_fisico_subnota') <div class="field-error">{{ $message }}</div> @enderror
+                <p style="font-size:.8rem; color:#6b7280; margin:.35rem 0 0;">
+                    Redujiste la cantidad de alguna prenda: lo que falta se amparará en una
+                    subnota nueva para poder facturarla por parcialidades. Captura aquí su folio físico.
+                </p>
+            </div>
+
             <h2 style="font-size:1rem; margin-top:0;">Firma de Recepción</h2>
-            <p style="font-size:.85rem; color:#6b7280;"><em>El cliente firma aquí para confirmar que recibió su pedido completo.</em></p>
+            <p style="font-size:.85rem; color:#6b7280;"><em>El cliente firma aquí para confirmar lo que recibió.</em></p>
 
             <canvas id="firma-canvas" width="540" height="180"
                     style="border:1px solid #d1d5db; border-radius:.375rem; touch-action:none; width:100%; max-width:540px; background:#fff;"></canvas>
@@ -189,6 +249,47 @@
                     }
                     document.getElementById('firma-input').value = canvas.toDataURL('image/png');
                 });
+
+                // Entrega parcial: si alguna línea se reduce por debajo del
+                // total, muestra el campo de folio físico de la subnota y lo
+                // vuelve obligatorio en el navegador (el servidor también lo
+                // valida, esto es solo para avisar antes de enviar).
+                var inputsEntregado = document.querySelectorAll('.input-entregado');
+                var grupoSubnota = document.getElementById('grupo-folio-subnota');
+                var campoFolioSubnota = document.getElementById('folio_fisico_subnota');
+
+                function actualizarAvisoSubnota() {
+                    var hayPendiente = false;
+                    inputsEntregado.forEach(function (input) {
+                        var total = parseInt(input.dataset.total, 10) || 0;
+                        var valor = parseInt(input.value, 10);
+                        if (isNaN(valor)) valor = total;
+                        if (valor < total) hayPendiente = true;
+                    });
+                    if (grupoSubnota) grupoSubnota.style.display = hayPendiente ? 'block' : 'none';
+                    if (campoFolioSubnota) {
+                        if (hayPendiente) campoFolioSubnota.setAttribute('required', 'required');
+                        else campoFolioSubnota.removeAttribute('required');
+                    }
+                }
+
+                inputsEntregado.forEach(function (input) {
+                    input.addEventListener('input', function () {
+                        var total = parseInt(input.dataset.total, 10) || 0;
+                        var valor = parseInt(input.value, 10);
+                        if (isNaN(valor)) valor = 0;
+                        if (valor > total) { valor = total; input.value = total; }
+                        if (valor < 0) { valor = 0; input.value = 0; }
+                        var etiqueta = document.getElementById('pendiente-' + input.dataset.id);
+                        if (etiqueta) {
+                            var pendiente = total - valor;
+                            etiqueta.textContent = pendiente > 0 ? ('Pendiente: ' + pendiente) : '';
+                        }
+                        actualizarAvisoSubnota();
+                    });
+                });
+
+                actualizarAvisoSubnota();
             })();
         </script>
     @endunless

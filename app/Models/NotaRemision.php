@@ -15,6 +15,7 @@ class NotaRemision extends Model
 
     protected $fillable = [
         'folio_fisico',
+        'folio_padre',
         'id_cliente',
         'id_vendedor',
         'fecha_recoleccion',
@@ -48,6 +49,25 @@ class NotaRemision extends Model
     public function detalle()
     {
         return $this->hasMany(DetalleRemision::class, 'folio_sistema', 'folio_sistema');
+    }
+
+    /**
+     * Folio original del que se desprendió esta subnota (entrega parcial,
+     * CU-04) — null si este folio nunca fue una subnota.
+     */
+    public function padre()
+    {
+        return $this->belongsTo(self::class, 'folio_padre', 'folio_sistema');
+    }
+
+    /**
+     * Subnotas generadas a partir de este folio por entregas parciales
+     * sucesivas (una o varias, si la mercancía se entrega en más de dos
+     * partes).
+     */
+    public function subnotas()
+    {
+        return $this->hasMany(self::class, 'folio_padre', 'folio_sistema');
     }
 
     public function getRouteKeyName(): string
