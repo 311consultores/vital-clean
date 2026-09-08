@@ -38,11 +38,13 @@ CREATE TABLE `sys_usuarios` (
 -- Dumping data for table `sys_usuarios`
 --
 
+LOCK TABLES `sys_usuarios` WRITE;
 /*!40000 ALTER TABLE `sys_usuarios` DISABLE KEYS */;
 INSERT INTO `sys_usuarios` (`id_usuario`, `username`, `password_hash`, `rol`, `nombre_completo`, `email`, `activo`, `remember_token`, `created_at`, `updated_at`) VALUES (1,'admin.vitalclean','$2y$12$bXsKWemv4ASTMjVdMjX0Sefv0.NZ7k8/WrPxr/2UwPw7J6VArH8je','ADMIN','Administrador Vital Clean','admin@vitalclean.mx',1,'zvhpmjVool','2026-08-12 05:05:08','2026-08-12 05:05:08'),
 (2,'vendedor.vitalclean','$2y$12$bXsKWemv4ASTMjVdMjX0Sefv0.NZ7k8/WrPxr/2UwPw7J6VArH8je','VENDEDOR','Vendedor Ruta 1','vendedor@vitalclean.mx',1,'PmZDuAZ2vF','2026-08-12 05:05:08','2026-08-12 05:05:08'),
 (3,'operador.vitalclean','$2y$12$bXsKWemv4ASTMjVdMjX0Sefv0.NZ7k8/WrPxr/2UwPw7J6VArH8je','OPERADOR','Operador de Planta','operador@vitalclean.mx',1,'rGoUE2BkYC','2026-08-12 05:05:08','2026-08-12 05:05:08');
 /*!40000 ALTER TABLE `sys_usuarios` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `cat_clientes`
@@ -71,9 +73,11 @@ CREATE TABLE `cat_clientes` (
 -- Dumping data for table `cat_clientes`
 --
 
+LOCK TABLES `cat_clientes` WRITE;
 /*!40000 ALTER TABLE `cat_clientes` DISABLE KEYS */;
 INSERT INTO `cat_clientes` (`id_cliente`, `nombre_comercial`, `razon_social`, `rfc`, `direccion`, `telefono`, `email_facturacion`, `estatus_credito`, `created_at`, `updated_at`) VALUES (1,'Grand Hotel de Mérida','Grand Hotel de Mérida S.A. de C.V.','GHM850101XYZ','Calle 60 #450, Centro, Mérida, Yucatán, C.P. 97000','9997808557','facturacion@grandhotelmerida.com.mx',1,'2026-08-12 05:05:08','2026-08-12 05:05:08');
 /*!40000 ALTER TABLE `cat_clientes` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `cat_servicios`
@@ -91,13 +95,14 @@ CREATE TABLE `cat_servicios` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id_servicio`),
   UNIQUE KEY `cat_servicios_descripcion_unique` (`descripcion`)
-) ENGINE=InnoDB AUTO_INCREMENT=132 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `cat_servicios`
 --
 
+LOCK TABLES `cat_servicios` WRITE;
 /*!40000 ALTER TABLE `cat_servicios` DISABLE KEYS */;
 INSERT INTO `cat_servicios` (`id_servicio`, `descripcion`, `unidad`, `categoria`, `created_at`, `updated_at`) VALUES (1,'Sábana King Size','PZA','Hotelería','2026-08-12 05:05:08','2026-08-12 05:05:08'),
 (2,'Sábana Queen','PZA','Hotelería','2026-08-12 05:05:08','2026-08-12 05:05:08'),
@@ -169,6 +174,7 @@ INSERT INTO `cat_servicios` (`id_servicio`, `descripcion`, `unidad`, `categoria`
 (68,'SERVICIO DE LAVANDERIA INTEGRAL','KG','Otros','2026-08-12 05:05:08','2026-08-12 05:05:13'),
 (69,'SERVICIO DE TINTORERIA','PZA','Otros','2026-08-12 05:05:08','2026-08-12 05:05:13');
 /*!40000 ALTER TABLE `cat_servicios` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `rel_tarifas_cliente`
@@ -196,6 +202,7 @@ CREATE TABLE `rel_tarifas_cliente` (
 -- Dumping data for table `rel_tarifas_cliente`
 --
 
+LOCK TABLES `rel_tarifas_cliente` WRITE;
 /*!40000 ALTER TABLE `rel_tarifas_cliente` DISABLE KEYS */;
 INSERT INTO `rel_tarifas_cliente` (`id_tarifa`, `id_cliente`, `id_servicio`, `precio_pactado`, `created_at`, `updated_at`) VALUES (1,1,1,10.67,'2026-08-12 05:05:08','2026-08-12 05:05:08'),
 (2,1,2,25.58,'2026-08-12 05:05:08','2026-08-12 05:05:08'),
@@ -205,6 +212,7 @@ INSERT INTO `rel_tarifas_cliente` (`id_tarifa`, `id_cliente`, `id_servicio`, `pr
 (6,1,6,11.99,'2026-08-12 05:05:08','2026-08-12 05:05:08'),
 (7,1,7,46.50,'2026-08-12 05:05:08','2026-08-12 05:05:08');
 /*!40000 ALTER TABLE `rel_tarifas_cliente` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `ope_notas_remision`
@@ -216,12 +224,14 @@ DROP TABLE IF EXISTS `ope_notas_remision`;
 CREATE TABLE `ope_notas_remision` (
   `folio_sistema` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `folio_fisico` varchar(20) NOT NULL,
+  `folio_padre` bigint(20) unsigned DEFAULT NULL,
   `id_cliente` bigint(20) unsigned NOT NULL,
   `id_vendedor` bigint(20) unsigned NOT NULL,
   `fecha_recoleccion` datetime NOT NULL DEFAULT current_timestamp(),
   `fecha_entrega_prog` date DEFAULT NULL,
   `estatus_orden` enum('RUTA','PLANTA_RECIBIDO','PROCESO','LISTO','ENTREGADO','CANCELADO') NOT NULL DEFAULT 'RUTA',
   `firma_cliente` mediumblob DEFAULT NULL,
+  `firma_entrega` mediumblob DEFAULT NULL,
   `geolocalizacion` varchar(100) DEFAULT NULL,
   `conteo_bloqueado` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -230,6 +240,8 @@ CREATE TABLE `ope_notas_remision` (
   KEY `ope_notas_remision_id_cliente_foreign` (`id_cliente`),
   KEY `ope_notas_remision_id_vendedor_foreign` (`id_vendedor`),
   KEY `ope_notas_remision_folio_fisico_index` (`folio_fisico`),
+  KEY `ope_notas_remision_folio_padre_foreign` (`folio_padre`),
+  CONSTRAINT `ope_notas_remision_folio_padre_foreign` FOREIGN KEY (`folio_padre`) REFERENCES `ope_notas_remision` (`folio_sistema`) ON DELETE SET NULL,
   CONSTRAINT `ope_notas_remision_id_cliente_foreign` FOREIGN KEY (`id_cliente`) REFERENCES `cat_clientes` (`id_cliente`),
   CONSTRAINT `ope_notas_remision_id_vendedor_foreign` FOREIGN KEY (`id_vendedor`) REFERENCES `sys_usuarios` (`id_usuario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -239,8 +251,10 @@ CREATE TABLE `ope_notas_remision` (
 -- Dumping data for table `ope_notas_remision`
 --
 
+LOCK TABLES `ope_notas_remision` WRITE;
 /*!40000 ALTER TABLE `ope_notas_remision` DISABLE KEYS */;
 /*!40000 ALTER TABLE `ope_notas_remision` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `ope_detalle_remision`
@@ -254,6 +268,7 @@ CREATE TABLE `ope_detalle_remision` (
   `folio_sistema` bigint(20) unsigned NOT NULL,
   `id_servicio` bigint(20) unsigned NOT NULL,
   `cantidad_entrada` int(11) NOT NULL DEFAULT 0,
+  `cantidad_salida` int(11) DEFAULT NULL,
   `precio_aplicado` decimal(10,2) DEFAULT NULL,
   `subtotal` decimal(10,2) DEFAULT NULL,
   `observacion_prenda` text DEFAULT NULL,
@@ -271,8 +286,10 @@ CREATE TABLE `ope_detalle_remision` (
 -- Dumping data for table `ope_detalle_remision`
 --
 
+LOCK TABLES `ope_detalle_remision` WRITE;
 /*!40000 ALTER TABLE `ope_detalle_remision` DISABLE KEYS */;
 /*!40000 ALTER TABLE `ope_detalle_remision` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `ope_incidencias`
@@ -298,8 +315,10 @@ CREATE TABLE `ope_incidencias` (
 -- Dumping data for table `ope_incidencias`
 --
 
+LOCK TABLES `ope_incidencias` WRITE;
 /*!40000 ALTER TABLE `ope_incidencias` DISABLE KEYS */;
 /*!40000 ALTER TABLE `ope_incidencias` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -307,4 +326,4 @@ CREATE TABLE `ope_incidencias` (
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-12  5:05:20
+-- Dump completed on 2026-09-08 19:36:42
