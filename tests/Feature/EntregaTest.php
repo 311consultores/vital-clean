@@ -69,10 +69,52 @@ class EntregaTest extends TestCase
 
     public function test_remision_muestra_total_calculado(): void
     {
+        // El total en $ solo lo ve ADMIN (el vendedor no ve precios, ver
+        // test_vendedor_no_ve_precios_en_remision).
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        ['orden' => $orden] = $this->crearFolioListo();
+
+        $response = $this->actingAs($admin)->get(route('entrega.remision', $orden));
+
+        $response->assertOk();
+        $response->assertSee('75.00');
+    }
+
+    public function test_vendedor_no_ve_precios_en_remision(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        ['orden' => $orden, 'servicio' => $servicio] = $this->crearFolioListo();
+
+        $response = $this->actingAs($vendedor)->get(route('entrega.remision', $orden));
+
+        $response->assertOk();
+        $response->assertDontSee('75.00');
+        $response->assertDontSee('15.00');
+        $response->assertDontSee('Precio');
+        $response->assertDontSee('Subtotal');
+        // Las cantidades sí las debe poder ver.
+        $response->assertSee($servicio->descripcion);
+        $response->assertSee('Cantidad');
+    }
+
+    public function test_vendedor_no_ve_precios_en_detalle_de_orden(): void
+    {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
         ['orden' => $orden] = $this->crearFolioListo();
 
-        $response = $this->actingAs($vendedor)->get(route('entrega.remision', $orden));
+        $response = $this->actingAs($vendedor)->get(route('operaciones.ordenes.show', $orden));
+
+        $response->assertOk();
+        $response->assertDontSee('75.00');
+        $response->assertDontSee('Precio Aplicado');
+    }
+
+    public function test_admin_si_ve_precios_en_detalle_de_orden(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        ['orden' => $orden] = $this->crearFolioListo();
+
+        $response = $this->actingAs($admin)->get(route('operaciones.ordenes.show', $orden));
 
         $response->assertOk();
         $response->assertSee('75.00');
@@ -92,6 +134,67 @@ class EntregaTest extends TestCase
         $orden->refresh();
         $this->assertSame('ENTREGADO', $orden->estatus_orden);
         $this->assertNotNull($orden->firma_entrega);
+    }
+
+    public function test_entrega_completa_sin_cambiar_cantidades_no_genera_subnota(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        ['orden' => $orden] = $this->crearFolioListo();
+
+        $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+        ]);
+
+        $this->assertSame(0, NotaRemision::where('folio_padre', $orden->folio_sistema)->count());
+    }
+
+    public function test_entrega_parcial_genera_subnota_con_lo_pendiente(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        ['orden' => $orden, 'detalle' => $detalle, 'servicio' => $servicio, 'cliente' => $cliente] = $this->crearFolioListo();
+
+        $response = $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+            'entregado' => [$detalle->id_detalle => 3], // de 5, se entregan 3, quedan 2 pendientes
+            'folio_fisico_subnota' => '02150',
+        ]);
+
+        $response->assertRedirect(route('entrega.remision', $orden));
+
+        $orden->refresh();
+        $this->assertSame('ENTREGADO', $orden->estatus_orden);
+
+        $detalle->refresh();
+        $this->assertSame(3, $detalle->cantidad_salida);
+        $this->assertEquals(45.00, $detalle->subtotal); // 3 x $15.00
+
+        $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+        $this->assertNotNull($subnota, 'Debe crearse una subnota por la mercancía pendiente.');
+        $this->assertSame('02150', $subnota->folio_fisico);
+        $this->assertSame('RUTA', $subnota->estatus_orden);
+        $this->assertSame($cliente->id_cliente, $subnota->id_cliente);
+        $this->assertSame($orden->id_vendedor, $subnota->id_vendedor);
+
+        $lineaSubnota = $subnota->detalle()->first();
+        $this->assertNotNull($lineaSubnota);
+        $this->assertSame($servicio->id_servicio, $lineaSubnota->id_servicio);
+        $this->assertSame(2, $lineaSubnota->cantidad_entrada);
+        $this->assertNull($lineaSubnota->precio_aplicado, 'El precio se congela hasta que Planta vuelva a auditar la subnota.');
+    }
+
+    public function test_entrega_parcial_requiere_folio_fisico_subnota(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioListo();
+
+        $response = $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+            'entregado' => [$detalle->id_detalle => 3],
+        ]);
+
+        $response->assertSessionHasErrors('folio_fisico_subnota');
+        $this->assertSame('LISTO', $orden->fresh()->estatus_orden);
+        $this->assertSame(0, NotaRemision::where('folio_padre', $orden->folio_sistema)->count());
     }
 
     public function test_remision_tras_confirmar_ofrece_boton_de_whatsapp(): void
