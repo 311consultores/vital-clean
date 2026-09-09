@@ -14,6 +14,13 @@ use Illuminate\Http\Response;
  * (middleware 'signed'): el cliente externo no tiene cuenta en el sistema,
  * así que no puede autenticarse, pero tampoco queremos que cualquiera
  * adivine folios consecutivos y descargue notas ajenas.
+ *
+ * El mismo enlace ($pdfUrl) también se usa como botón "Ver PDF" dentro del
+ * panel del vendedor. Como la ruta no exige 'auth', un vendedor que le da
+ * clic desde su sesión sí llega autenticado (misma pestaña/dominio, cookie
+ * de sesión incluida) — se aprovecha eso para ocultarle precios, igual que
+ * en el resto del panel; el cliente externo (sin sesión) y ADMIN los siguen
+ * viendo igual que antes.
  */
 class NotaPdfController extends Controller
 {
@@ -21,12 +28,14 @@ class NotaPdfController extends Controller
     {
         $orden->load('cliente', 'detalle.servicio');
 
+        $ocultarPrecios = auth()->check() && auth()->user()->rol === 'VENDEDOR';
+
         $options = new Options();
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'Helvetica');
 
         $dompdf = new Dompdf($options);
-        $dompdf->loadHtml(view('notas.pdf', compact('orden'))->render());
+        $dompdf->loadHtml(view('notas.pdf', compact('orden', 'ocultarPrecios'))->render());
         $dompdf->setPaper('letter', 'portrait');
         $dompdf->render();
 

@@ -48,8 +48,10 @@
             <tr>
                 <th>Prenda</th>
                 <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
+                @unless ($ocultarPrecios)
+                    <th>Precio</th>
+                    <th>Subtotal</th>
+                @endunless
             </tr>
         </thead>
         <tbody>
@@ -57,19 +59,23 @@
                 <tr>
                     <td>{{ $linea->servicio->descripcion }}</td>
                     <td>{{ $linea->cantidad_salida ?? $linea->cantidad_entrada }}</td>
-                    <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
-                    <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : 'Pendiente' }}</td>
+                    @unless ($ocultarPrecios)
+                        <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
+                        <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : 'Pendiente' }}</td>
+                    @endunless
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    @php $total = $orden->detalle->sum('subtotal'); @endphp
-    <p class="total">
-        <strong>
-            Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($total, 2) : 'Pendiente de conteo' }}
-        </strong>
-    </p>
+    @unless ($ocultarPrecios)
+        @php $total = $orden->detalle->sum('subtotal'); @endphp
+        <p class="total">
+            <strong>
+                Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($total, 2) : 'Pendiente de conteo' }}
+            </strong>
+        </p>
+    @endunless
 
     <footer>Generado el {{ now()->format('d/m/Y H:i') }} — Lavandería Vital Clean.</footer>
 </body>
