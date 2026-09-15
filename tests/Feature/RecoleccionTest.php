@@ -55,11 +55,12 @@ class RecoleccionTest extends TestCase
         $confirmar->assertRedirect(route('vendedor.recoleccion.exito', $nota));
 
         $this->assertDatabaseHas('ope_notas_remision', [
-            'folio_fisico' => '02149',
+            'folio_fisico' => $nota->folio_display,
             'id_cliente' => $cliente->id_cliente,
             'id_vendedor' => $vendedor->id_usuario,
             'estatus_orden' => 'RUTA',
         ]);
+        $this->assertSame('VC-'.str_pad((string) $nota->folio_sistema, 4, '0', STR_PAD_LEFT), $nota->folio_display);
         $this->assertDatabaseHas('ope_detalle_remision', [
             'folio_sistema' => $nota->folio_sistema,
             'id_servicio' => $servicio->id_servicio,
@@ -67,20 +68,6 @@ class RecoleccionTest extends TestCase
             'precio_aplicado' => null,
         ]);
         $this->assertNotNull($nota->firma_cliente);
-    }
-
-    public function test_folio_fisico_is_required(): void
-    {
-        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
-        $cliente = Cliente::factory()->create();
-        $servicio = Servicio::factory()->create();
-
-        $response = $this->actingAs($vendedor)->post(route('vendedor.recoleccion.store'), [
-            'id_cliente' => $cliente->id_cliente,
-            'cantidades' => [$servicio->id_servicio => 3],
-        ]);
-
-        $response->assertSessionHasErrors('folio_fisico');
     }
 
     public function test_at_least_one_prenda_with_quantity_is_required(): void

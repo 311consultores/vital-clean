@@ -8,7 +8,6 @@ use App\Support\WhatsApp;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -28,7 +27,9 @@ use Illuminate\View\View;
  * mercancía pendiente vuelve a pasar por Planta (CU-02) y Producción (CU-03)
  * como si fuera un folio nuevo, igual que el levantamiento original (CU-01):
  * cantidad_entrada queda como el estimado inicial y precio_aplicado/subtotal
- * se fijan hasta que Planta la cuente.
+ * se fijan hasta que Planta la cuente. El folio de la subnota se autogenera
+ * (ver NotaRemision::getFolioDisplayAttribute) — una subnota puede a su vez
+ * entregarse parcialmente y generar su propia subnota, sin límite de nivel.
  */
 class EntregaController extends Controller
 {
@@ -129,28 +130,36 @@ class EntregaController extends Controller
             'firma' => ['required', 'string', 'starts_with:data:image/png;base64,'],
             'entregado' => ['nullable', 'array'],
             'entregado.*' => ['nullable', 'integer', 'min:0'],
-            'folio_fisico_subnota' => [Rule::requiredIf($esParcial), 'nullable', 'string', 'max:20'],
         ], [
             'firma.required' => 'Falta capturar la firma de recepción.',
-            'folio_fisico_subnota.required' => 'Esta es una entrega parcial: captura el folio físico de la subnota para lo que queda pendiente.',
         ]);
 
         $firmaBinaria = base64_decode(substr($request->input('firma'), strlen('data:image/png;base64,')));
 
-        $subnota = DB::transaction(function () use ($orden, $reparto, $esParcial, $firmaBinaria, $request) {
+        $subnota = DB::transaction(function () use ($orden, $reparto, $esParcial, $firmaBinaria) {
             $subnota = null;
 
             if ($esParcial) {
-                // RN-05: la subnota también necesita su propio folio físico.
+                // Posición de esta subnota entre las subnotas inmediatas de
+                // $orden (1, 2, 3...) — sirve para armar el folio visible
+                // (SUB-000X-N) sin depender de que el usuario capture nada.
+                $secuencia = $orden->subnotas()->count() + 1;
+
+                // folio_fisico es NOT NULL y el folio visible depende del
+                // propio folio_sistema (autoincrement): se crea con un valor
+                // temporal y se reemplaza de inmediato por el autogenerado.
                 $subnota = NotaRemision::create([
-                    'folio_fisico' => $request->input('folio_fisico_subnota'),
+                    'folio_fisico' => 'PENDIENTE',
                     'folio_padre' => $orden->folio_sistema,
+                    'secuencia_subnota' => $secuencia,
                     'id_cliente' => $orden->id_cliente,
                     'id_vendedor' => $orden->id_vendedor,
                     'fecha_recoleccion' => now(),
                     'fecha_entrega_prog' => $orden->fecha_entrega_prog,
                     'estatus_orden' => 'RUTA',
                 ]);
+                $subnota->setRelation('padre', $orden);
+                $subnota->update(['folio_fisico' => $subnota->folio_display]);
             }
 
             foreach ($reparto as $r) {
@@ -184,11 +193,10 @@ class EntregaController extends Controller
             return $subnota;
         });
 
-        $mensaje = 'Folio VC-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).' entregado y cerrado. Queda derivado a Cuentas por Cobrar.';
+        $mensaje = "Folio {$orden->folio_display} entregado y cerrado. Queda derivado a Cuentas por Cobrar.";
 
         if ($subnota) {
-            $mensaje .= ' Se generó la subnota VC-'.str_pad((string) $subnota->folio_sistema, 4, '0', STR_PAD_LEFT)
-                ." (folio físico {$subnota->folio_fisico}) por la mercancía pendiente, para facturar por parcialidades.";
+            $mensaje .= " Se generó la subnota {$subnota->folio_display} por la mercancía pendiente, para facturar por parcialidades.";
         }
 
         return redirect()->route('entrega.remision', $orden)->with('status', $mensaje);

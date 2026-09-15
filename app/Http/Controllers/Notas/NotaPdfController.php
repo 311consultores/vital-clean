@@ -26,7 +26,7 @@ class NotaPdfController extends Controller
 {
     public function show(NotaRemision $orden): Response
     {
-        $orden->load('cliente', 'detalle.servicio');
+        $orden->load('cliente', 'detalle.servicio', 'padre', 'subnotas');
 
         $ocultarPrecios = auth()->check() && auth()->user()->rol === 'VENDEDOR';
 
@@ -39,7 +39,7 @@ class NotaPdfController extends Controller
         $dompdf->setPaper('letter', 'portrait');
         $dompdf->render();
 
-        $nombreArchivo = 'nota-VC-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).'.pdf';
+        $nombreArchivo = 'nota-'.$orden->folio_display.'.pdf';
 
         return new Response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',

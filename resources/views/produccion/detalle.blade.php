@@ -12,7 +12,7 @@
         <div>
             <h1 style="margin-bottom:.2rem;">{{ $orden->cliente->nombre_comercial }}</h1>
             <p style="margin:0; color:#6b7280;">
-                Folio VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}
+                Folio {{ $orden->folio_display }}
             </p>
         </div>
         <span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span>

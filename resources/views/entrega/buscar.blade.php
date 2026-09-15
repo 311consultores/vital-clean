@@ -66,7 +66,7 @@
             <tbody>
                 @forelse ($listos as $orden)
                     <tr>
-                        <td>VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}</td>
+                        <td>{{ $orden->folio_display }}</td>
                         <td>{{ $orden->cliente->nombre_comercial }}</td>
                         <td><span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span></td>
                         <td><a class="btn btn-sm" href="{{ route('entrega.remision', $orden) }}">Entregar</a></td>

@@ -7,7 +7,7 @@
 
     <div class="card" style="max-width:600px; margin-bottom:1rem;">
         <p><strong>Cliente:</strong> {{ $cliente->nombre_comercial }}</p>
-        <p><strong>Folio Físico:</strong> {{ $folioFisico }}</p>
+        <p style="color:#6b7280; font-size:.85rem;">El folio se asigna automáticamente al confirmar.</p>
 
         <table class="data-table">
             <thead>

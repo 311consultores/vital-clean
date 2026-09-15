@@ -37,8 +37,14 @@
     @endif
 
     <div class="card" style="max-width:640px;">
-        <p><strong>Folio Sistema:</strong> VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }}</p>
-        <p><strong>Folio Físico:</strong> {{ $orden->folio_fisico }}</p>
+        <p><strong>Folio:</strong> {{ $orden->folio_display }}</p>
+        @if ($orden->padre)
+            <p style="font-size:.85rem; color:#6b7280;">
+                Subnota del folio
+                <a href="{{ route('operaciones.ordenes.show', $orden->padre) }}">{{ $orden->padre->folio_display }}</a>
+                (mercancía pendiente de una entrega parcial anterior).
+            </p>
+        @endif
         <p><strong>Cliente:</strong> {{ $orden->cliente->nombre_comercial }}</p>
         <p><strong>Vendedor:</strong> {{ $orden->vendedor->nombre_completo ?? $orden->vendedor->username }}</p>
         <p><strong>Estatus:</strong> <span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span></p>
@@ -78,7 +84,15 @@
                         @endunless
                         <td>
                             @forelse ($linea->incidencias as $incidencia)
-                                <span class="badge" style="background:var(--rojo);">{{ $incidencia->comentario ?? 'Daño' }}</span>
+                                <div style="display:flex; align-items:center; gap:.4rem; margin-bottom:.3rem;">
+                                    @if ($incidencia->foto_evidencia)
+                                        <a href="{{ asset('uploads/incidencias/'.$incidencia->foto_evidencia) }}" target="_blank" rel="noopener">
+                                            <img src="{{ asset('uploads/incidencias/'.$incidencia->foto_evidencia) }}" alt="Evidencia"
+                                                 style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid #ddd;">
+                                        </a>
+                                    @endif
+                                    <span class="badge" style="background:var(--rojo);">{{ $incidencia->comentario ?? 'Daño' }}</span>
+                                </div>
                             @empty
                                 —
                             @endforelse
@@ -91,6 +105,20 @@
             <p style="margin-top:.75rem;"><strong>Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($orden->detalle->sum('subtotal'), 2) : 'Pendiente de conteo en planta' }}</strong></p>
         @endunless
     </div>
+
+    @if ($orden->subnotas->isNotEmpty())
+        <div class="card" style="max-width:640px; margin-top:1rem;">
+            <h2 style="font-size:1rem; margin-top:0;">Subnotas relacionadas</h2>
+            <ul style="margin:0; padding-left:1.2rem;">
+                @foreach ($orden->subnotas as $sub)
+                    <li>
+                        <a href="{{ route('operaciones.ordenes.show', $sub) }}">{{ $sub->folio_display }}</a>
+                        — <span class="badge badge-{{ strtolower($sub->estatus_orden) }}">{{ $sub->estatus_orden }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     <div class="form-actions">
         @switch(auth()->user()->rol)

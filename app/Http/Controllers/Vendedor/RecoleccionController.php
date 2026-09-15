@@ -40,7 +40,6 @@ class RecoleccionController extends Controller
             ->map(fn ($cantidad) => (int) $cantidad);
 
         $request->session()->put(self::SESSION_KEY, [
-            'folio_fisico' => $request->input('folio_fisico'),
             'id_cliente' => (int) $request->input('id_cliente'),
             'fecha_entrega_prog' => $request->input('fecha_entrega_prog'),
             'cantidades' => $cantidades->all(),
@@ -72,7 +71,6 @@ class RecoleccionController extends Controller
             'cliente' => $cliente,
             'items' => $items,
             'totalPiezas' => $totalPiezas,
-            'folioFisico' => $pendiente['folio_fisico'],
         ]);
     }
 
@@ -103,8 +101,11 @@ class RecoleccionController extends Controller
         $firmaBinaria = base64_decode(substr($request->input('firma'), strlen('data:image/png;base64,')));
 
         $nota = DB::transaction(function () use ($pendiente, $firmaBinaria, $request) {
+            // folio_fisico es NOT NULL y depende de folio_sistema (autoincrement),
+            // que solo existe una vez insertada la fila: se crea con un valor
+            // temporal y se reemplaza de inmediato por el folio autogenerado.
             $nota = NotaRemision::create([
-                'folio_fisico' => $pendiente['folio_fisico'],
+                'folio_fisico' => 'PENDIENTE',
                 'id_cliente' => $pendiente['id_cliente'],
                 'id_vendedor' => $request->user()->id_usuario,
                 'fecha_recoleccion' => now(),
@@ -122,6 +123,8 @@ class RecoleccionController extends Controller
                     'cantidad_entrada' => $cantidad,
                 ]);
             }
+
+            $nota->update(['folio_fisico' => $nota->folio_display]);
 
             return $nota;
         });

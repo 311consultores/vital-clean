@@ -16,6 +16,7 @@ class NotaRemision extends Model
     protected $fillable = [
         'folio_fisico',
         'folio_padre',
+        'secuencia_subnota',
         'id_cliente',
         'id_vendedor',
         'fecha_recoleccion',
@@ -73,6 +74,33 @@ class NotaRemision extends Model
     public function getRouteKeyName(): string
     {
         return 'folio_sistema';
+    }
+
+    /**
+     * Folio visible: el sistema lo autogenera, ya no se captura a mano
+     * (antes RN-05 exigía el folio de papel). Un folio raíz se ve
+     * "VC-0002"; una subnota reutiliza el número del folio raíz con
+     * prefijo "SUB-" y la cadena de posiciones desde la raíz hasta este
+     * nodo — "SUB-0002-1" (primera subnota de VC-0002), "SUB-0002-1-1"
+     * (subnota de esa subnota), etc. — para que nunca haya ambigüedad
+     * aunque un folio se entregue en varias partes o una subnota se
+     * vuelva a entregar parcialmente.
+     */
+    public function getFolioDisplayAttribute(): string
+    {
+        if ($this->folio_padre === null) {
+            return 'VC-'.str_pad((string) $this->folio_sistema, 4, '0', STR_PAD_LEFT);
+        }
+
+        $cadena = [];
+        $nodo = $this;
+
+        while ($nodo->folio_padre !== null) {
+            $cadena[] = $nodo->secuencia_subnota;
+            $nodo = $nodo->relationLoaded('padre') ? $nodo->padre : $nodo->padre()->first();
+        }
+
+        return 'SUB-'.str_pad((string) $nodo->folio_sistema, 4, '0', STR_PAD_LEFT).'-'.implode('-', array_reverse($cadena));
     }
 
     /**

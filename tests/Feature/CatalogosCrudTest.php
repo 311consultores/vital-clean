@@ -31,6 +31,31 @@ class CatalogosCrudTest extends TestCase
         $this->assertDatabaseHas('cat_clientes', ['nombre_comercial' => 'Hotel Test', 'estatus_credito' => 1]);
     }
 
+    public function test_admin_can_clone_tarifario_al_crear_cliente(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $origen = Cliente::factory()->create();
+        $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create([
+            'id_cliente' => $origen->id_cliente,
+            'id_servicio' => $servicio->id_servicio,
+            'precio_pactado' => 12.50,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('operaciones.clientes.store'), [
+            'nombre_comercial' => 'Hotel Clonado',
+            'clonar_tarifario_de' => $origen->id_cliente,
+        ]);
+
+        $response->assertRedirect(route('operaciones.clientes.index'));
+        $nuevo = Cliente::where('nombre_comercial', 'Hotel Clonado')->firstOrFail();
+        $this->assertDatabaseHas('rel_tarifas_cliente', [
+            'id_cliente' => $nuevo->id_cliente,
+            'id_servicio' => $servicio->id_servicio,
+            'precio_pactado' => 12.50,
+        ]);
+    }
+
     public function test_rfc_must_be_unique(): void
     {
         $admin = Usuario::factory()->create(['rol' => 'ADMIN']);

@@ -15,7 +15,7 @@ class OrdenController extends Controller
 {
     public function show(NotaRemision $orden): View
     {
-        $orden->load('cliente', 'vendedor', 'detalle.servicio', 'detalle.incidencias');
+        $orden->load('cliente', 'vendedor', 'detalle.servicio', 'detalle.incidencias', 'padre', 'subnotas');
 
         return view('operaciones.ordenes.show', ['orden' => $orden]);
     }

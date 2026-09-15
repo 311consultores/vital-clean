@@ -9,7 +9,8 @@ use Illuminate\Validation\Validator;
 /**
  * Validación del checklist de recolección (CU-01, Anexo App pantallas 04-05).
  *
- * RN-05: folio_fisico obligatorio (puente papel/digital).
+ * El folio ya no se captura a mano: el sistema lo autogenera (VC-000X)
+ * al confirmar el folio (ver RecoleccionController::confirmar).
  * RN-04: bloqueo si el cliente tiene crédito suspendido.
  */
 class RecoleccionRequest extends FormRequest
@@ -22,7 +23,6 @@ class RecoleccionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'folio_fisico' => ['required', 'string', 'max:20'],
             'id_cliente' => ['required', 'integer', 'exists:cat_clientes,id_cliente'],
             'fecha_entrega_prog' => ['nullable', 'date', 'after_or_equal:today'],
             'cantidades' => ['required', 'array'],

@@ -156,7 +156,6 @@ class EntregaTest extends TestCase
         $response = $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
             'firma' => $this->firmaDataUrl(),
             'entregado' => [$detalle->id_detalle => 3], // de 5, se entregan 3, quedan 2 pendientes
-            'folio_fisico_subnota' => '02150',
         ]);
 
         $response->assertRedirect(route('entrega.remision', $orden));
@@ -170,7 +169,12 @@ class EntregaTest extends TestCase
 
         $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
         $this->assertNotNull($subnota, 'Debe crearse una subnota por la mercancía pendiente.');
-        $this->assertSame('02150', $subnota->folio_fisico);
+        // El folio ya no se captura a mano: se autogenera reutilizando el
+        // número del folio raíz con prefijo SUB- y sufijo de posición (-1).
+        $folioEsperado = 'SUB-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).'-1';
+        $this->assertSame($folioEsperado, $subnota->folio_fisico);
+        $this->assertSame($folioEsperado, $subnota->folio_display);
+        $this->assertSame(1, $subnota->secuencia_subnota);
         $this->assertSame('RUTA', $subnota->estatus_orden);
         $this->assertSame($cliente->id_cliente, $subnota->id_cliente);
         $this->assertSame($orden->id_vendedor, $subnota->id_vendedor);
@@ -182,19 +186,53 @@ class EntregaTest extends TestCase
         $this->assertNull($lineaSubnota->precio_aplicado, 'El precio se congela hasta que Planta vuelva a auditar la subnota.');
     }
 
-    public function test_entrega_parcial_requiere_folio_fisico_subnota(): void
+    public function test_segunda_entrega_parcial_del_mismo_folio_incrementa_la_secuencia(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
-        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioListo();
+        ['orden' => $orden] = $this->crearFolioListo();
 
-        $response = $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
-            'firma' => $this->firmaDataUrl(),
-            'entregado' => [$detalle->id_detalle => 3],
+        // Primera línea adicional para poder generar dos subnotas distintas.
+        $servicio2 = Servicio::factory()->create();
+        TarifaCliente::create([
+            'id_cliente' => $orden->id_cliente,
+            'id_servicio' => $servicio2->id_servicio,
+            'precio_pactado' => 10.00,
+        ]);
+        $detalle2 = $orden->detalle()->create([
+            'id_servicio' => $servicio2->id_servicio,
+            'cantidad_entrada' => 4,
+            'cantidad_salida' => 4,
+            'precio_aplicado' => 10.00,
+            'subtotal' => 40.00,
         ]);
 
-        $response->assertSessionHasErrors('folio_fisico_subnota');
-        $this->assertSame('LISTO', $orden->fresh()->estatus_orden);
-        $this->assertSame(0, NotaRemision::where('folio_padre', $orden->folio_sistema)->count());
+        // Primer cierre parcial: dos líneas, cada una deja pendiente.
+        $orden->refresh();
+        $detalle = $orden->detalle()->where('id_servicio', '!=', $servicio2->id_servicio)->first();
+        $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+            'entregado' => [$detalle->id_detalle => 3, $detalle2->id_detalle => 2],
+        ]);
+
+        $primeraSubnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+        $this->assertSame(1, $primeraSubnota->secuencia_subnota);
+
+        // Esa misma subnota se procesa y se lleva a LISTO para poder
+        // entregarla parcialmente otra vez (una segunda subnota del mismo padre).
+        $lineaSub = $primeraSubnota->detalle()->first();
+        $primeraSubnota->update(['estatus_orden' => 'LISTO', 'conteo_bloqueado' => true]);
+        $lineaSub->update(['precio_aplicado' => 15.00, 'cantidad_salida' => $lineaSub->cantidad_entrada, 'subtotal' => $lineaSub->cantidad_entrada * 15.00]);
+
+        $this->actingAs($vendedor)->post(route('entrega.confirmar', $primeraSubnota), [
+            'firma' => $this->firmaDataUrl(),
+            'entregado' => [$lineaSub->id_detalle => 0],
+        ]);
+
+        $subnotaDeSubnota = NotaRemision::where('folio_padre', $primeraSubnota->folio_sistema)->first();
+        $this->assertNotNull($subnotaDeSubnota, 'Una subnota debe poder generar, a su vez, su propia subnota.');
+        $this->assertSame(1, $subnotaDeSubnota->secuencia_subnota);
+        $folioEsperado = 'SUB-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).'-1-1';
+        $this->assertSame($folioEsperado, $subnotaDeSubnota->folio_display);
     }
 
     public function test_remision_tras_confirmar_ofrece_boton_de_whatsapp(): void

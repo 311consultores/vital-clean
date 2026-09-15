@@ -30,7 +30,7 @@
         <tbody>
             @forelse ($pedidos as $pedido)
                 <tr>
-                    <td>VC-{{ str_pad($pedido->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $pedido->folio_fisico }}</td>
+                    <td>{{ $pedido->folio_display }}</td>
                     <td>{{ $pedido->cliente->nombre_comercial }}</td>
                     <td><span class="badge badge-{{ strtolower($pedido->estatus_orden) }}">{{ $pedido->estatus_orden }}</span></td>
                     <td>{{ $pedido->fecha_recoleccion->format('d/m/Y H:i') }}</td>

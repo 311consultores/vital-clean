@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Operaciones;
 
 use App\Http\Controllers\Controller;
-use App\Models\Incidencia;
 use App\Models\NotaRemision;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -38,11 +37,14 @@ class DashboardController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $alertasCalidad = Incidencia::with('detalle.notaRemision', 'detalle.servicio')
-            ->latest('created_at')
-            ->take(5)
-            ->get();
+        // #11: aviso simple de pedidos nuevos desde la última visita al dashboard
+        // (sin infraestructura de tiempo real: se recalcula en cada carga/recarga).
+        $ultimaVisita = $request->session()->get('dashboard_ultima_visita');
+        $pedidosNuevos = $ultimaVisita
+            ? NotaRemision::whereNull('folio_padre')->where('created_at', '>', $ultimaVisita)->count()
+            : 0;
+        $request->session()->put('dashboard_ultima_visita', now());
 
-        return view('operaciones.dashboard', compact('kpis', 'ordenes', 'alertasCalidad'));
+        return view('operaciones.dashboard', compact('kpis', 'ordenes', 'pedidosNuevos'));
     }
 }

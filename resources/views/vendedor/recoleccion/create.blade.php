@@ -31,12 +31,6 @@
             </div>
 
             <div class="form-group">
-                <label for="folio_fisico">Folio Físico (nota de remisión en papel) *</label>
-                <input type="text" id="folio_fisico" name="folio_fisico" maxlength="20"
-                       value="{{ old('folio_fisico') }}" placeholder="Ej. 02149" required style="max-width:200px;">
-            </div>
-
-            <div class="form-group">
                 <label for="fecha_entrega_prog">Fecha de Entrega Comprometida</label>
                 <input type="date" id="fecha_entrega_prog" name="fecha_entrega_prog"
                        value="{{ old('fecha_entrega_prog') }}" min="{{ now()->toDateString() }}" style="max-width:200px;">

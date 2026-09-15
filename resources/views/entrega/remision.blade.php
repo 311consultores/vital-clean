@@ -14,7 +14,7 @@
         <div>
             <h1 style="margin-bottom:.2rem;">Nota de Remisión Final</h1>
             <p style="margin:0; color:#6b7280;">
-                Folio VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}
+                Folio {{ $orden->folio_display }}
             </p>
         </div>
         <span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span>
@@ -22,8 +22,8 @@
 
     @if ($orden->padre)
         <div class="alert alert-status no-print">
-            Esta es una subnota del folio VC-{{ str_pad($orden->padre->folio_sistema, 4, '0', STR_PAD_LEFT) }}
-            / {{ $orden->padre->folio_fisico }} (mercancía que quedó pendiente de una entrega parcial anterior).
+            Esta es una subnota del folio {{ $orden->padre->folio_display }}
+            (mercancía que quedó pendiente de una entrega parcial anterior).
         </div>
     @endif
 
@@ -53,7 +53,7 @@
 
     <div class="card" id="remision-imprimible" style="max-width:640px;">
         <h2 style="font-size:1.1rem; margin-top:0;">Vital Clean — Nota de Remisión</h2>
-        <p style="margin:.1rem 0;"><strong>Folio:</strong> VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}</p>
+        <p style="margin:.1rem 0;"><strong>Folio:</strong> {{ $orden->folio_display }}</p>
         <p style="margin:.1rem 0;"><strong>Cliente:</strong> {{ $orden->cliente->nombre_comercial }}</p>
         <p style="margin:.1rem 0;"><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->format('d/m/Y') }}</p>
         @if ($orden->fecha_entrega_prog)
@@ -111,9 +111,7 @@
             <ul style="margin:0; padding-left:1.2rem;">
                 @foreach ($orden->subnotas as $sub)
                     <li>
-                        <a href="{{ route('entrega.remision', $sub) }}">
-                            VC-{{ str_pad($sub->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $sub->folio_fisico }}
-                        </a>
+                        <a href="{{ route('entrega.remision', $sub) }}">{{ $sub->folio_display }}</a>
                         — <span class="badge badge-{{ strtolower($sub->estatus_orden) }}">{{ $sub->estatus_orden }}</span>
                     </li>
                 @endforeach
@@ -123,15 +121,9 @@
 
     @unless ($soloLectura)
         <div class="card no-print" style="max-width:640px; margin-top:1rem;">
-            <div id="grupo-folio-subnota" class="form-group" style="display:none;">
-                <label for="folio_fisico_subnota">Folio físico de la subnota</label>
-                <input type="text" id="folio_fisico_subnota" name="folio_fisico_subnota" form="form-confirmar"
-                       value="{{ old('folio_fisico_subnota') }}" maxlength="20" placeholder="Ej. 02150">
-                @error('folio_fisico_subnota') <div class="field-error">{{ $message }}</div> @enderror
-                <p style="font-size:.8rem; color:#6b7280; margin:.35rem 0 0;">
-                    Redujiste la cantidad de alguna prenda: lo que falta se amparará en una
-                    subnota nueva para poder facturarla por parcialidades. Captura aquí su folio físico.
-                </p>
+            <div id="aviso-subnota" class="alert alert-status" style="display:none; margin-bottom:1rem;">
+                Redujiste la cantidad de alguna prenda: lo que falta se amparará automáticamente
+                en una subnota nueva (folio autogenerado) para poder facturarla por parcialidades.
             </div>
 
             <h2 style="font-size:1rem; margin-top:0;">Firma de Recepción</h2>
@@ -251,12 +243,10 @@
                 });
 
                 // Entrega parcial: si alguna línea se reduce por debajo del
-                // total, muestra el campo de folio físico de la subnota y lo
-                // vuelve obligatorio en el navegador (el servidor también lo
-                // valida, esto es solo para avisar antes de enviar).
+                // total, avisa que se generará una subnota (folio autogenerado,
+                // nada que capturar) para lo que quede pendiente.
                 var inputsEntregado = document.querySelectorAll('.input-entregado');
-                var grupoSubnota = document.getElementById('grupo-folio-subnota');
-                var campoFolioSubnota = document.getElementById('folio_fisico_subnota');
+                var avisoSubnota = document.getElementById('aviso-subnota');
 
                 function actualizarAvisoSubnota() {
                     var hayPendiente = false;
@@ -266,11 +256,7 @@
                         if (isNaN(valor)) valor = total;
                         if (valor < total) hayPendiente = true;
                     });
-                    if (grupoSubnota) grupoSubnota.style.display = hayPendiente ? 'block' : 'none';
-                    if (campoFolioSubnota) {
-                        if (hayPendiente) campoFolioSubnota.setAttribute('required', 'required');
-                        else campoFolioSubnota.removeAttribute('required');
-                    }
+                    if (avisoSubnota) avisoSubnota.style.display = hayPendiente ? 'block' : 'none';
                 }
 
                 inputsEntregado.forEach(function (input) {

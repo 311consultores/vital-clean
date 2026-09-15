@@ -3,6 +3,11 @@
 -- Host: localhost    Database: vitalclean
 -- ------------------------------------------------------
 -- Server version	10.11.14-MariaDB-0ubuntu0.24.04.1
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -31,7 +36,7 @@ CREATE TABLE `sys_usuarios` (
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `sys_usuarios_username_unique` (`username`),
   UNIQUE KEY `sys_usuarios_email_unique` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -54,7 +59,7 @@ CREATE TABLE `cat_clientes` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id_cliente`),
   UNIQUE KEY `cat_clientes_rfc_unique` (`rfc`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -73,7 +78,7 @@ CREATE TABLE `cat_servicios` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id_servicio`),
   UNIQUE KEY `cat_servicios_descripcion_unique` (`descripcion`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -95,7 +100,7 @@ CREATE TABLE `rel_tarifas_cliente` (
   KEY `rel_tarifas_cliente_id_servicio_foreign` (`id_servicio`),
   CONSTRAINT `rel_tarifas_cliente_id_cliente_foreign` FOREIGN KEY (`id_cliente`) REFERENCES `cat_clientes` (`id_cliente`),
   CONSTRAINT `rel_tarifas_cliente_id_servicio_foreign` FOREIGN KEY (`id_servicio`) REFERENCES `cat_servicios` (`id_servicio`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -109,6 +114,7 @@ CREATE TABLE `ope_notas_remision` (
   `folio_sistema` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `folio_fisico` varchar(20) NOT NULL,
   `folio_padre` bigint(20) unsigned DEFAULT NULL,
+  `secuencia_subnota` tinyint(3) unsigned DEFAULT NULL,
   `id_cliente` bigint(20) unsigned NOT NULL,
   `id_vendedor` bigint(20) unsigned NOT NULL,
   `fecha_recoleccion` datetime NOT NULL DEFAULT current_timestamp(),
@@ -181,6 +187,9 @@ CREATE TABLE `ope_incidencias` (
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-08 19:35:27
+-- Dump completed on 2026-09-15  2:17:08
