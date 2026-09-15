@@ -53,6 +53,23 @@
             background: var(--rojo); flex-shrink: 0;
         }
         header.app-header .btn-logout svg { flex-shrink: 0; }
+        /* #11: campanita de notificaciones — estilo "burbuja" tipo redes
+           sociales (Instagram/Facebook): ícono con un punto/número rojo
+           sobrepuesto en la esquina cuando hay pedidos nuevos. */
+        .header-bell {
+            position: relative; display: inline-flex; align-items: center;
+            justify-content: center; color: var(--blanco); flex-shrink: 0;
+            padding: .3rem; border-radius: 999px;
+        }
+        .header-bell:hover { background: rgba(255,255,255,.12); }
+        .header-bell-badge {
+            position: absolute; top: -2px; right: -2px;
+            background: var(--rojo); color: var(--blanco);
+            font-size: .62rem; font-weight: 700; line-height: 1;
+            min-width: 16px; height: 16px; border-radius: 999px;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 3px; border: 2px solid var(--azul);
+        }
         /* Pantallas medianas: el nombre completo ya no cabe entero junto a
            la insignia de rol y "Salir" — se trunca con elipsis en vez de
            empujar el botón fuera de la pantalla o encimarse. */
@@ -216,6 +233,17 @@
         <header class="app-header">
             <span class="brand">@include('partials.logo', ['size' => 30, 'stacked' => false, 'light' => true])</span>
             <span class="header-user">
+                @if (in_array(auth()->user()->rol, ['ADMIN', 'OPERADOR'], true))
+                    <a href="{{ route('operaciones.dashboard') }}" class="header-bell" title="Pedidos nuevos">
+                        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                        @if ($pedidosNuevosHeader > 0)
+                            <span class="header-bell-badge">{{ $pedidosNuevosHeader > 9 ? '9+' : $pedidosNuevosHeader }}</span>
+                        @endif
+                    </a>
+                @endif
                 <span class="header-user-name">{{ auth()->user()->nombre_completo ?? auth()->user()->username }}</span>
                 <span class="badge badge-{{ strtolower(auth()->user()->rol) }}">{{ auth()->user()->rol }}</span>
                 <form method="POST" action="{{ route('logout') }}" style="margin:0;">

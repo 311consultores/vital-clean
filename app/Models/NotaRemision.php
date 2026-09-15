@@ -77,6 +77,20 @@ class NotaRemision extends Model
     }
 
     /**
+     * #11: pedidos raíz recolectados después de $desde — usado tanto por el
+     * aviso del dashboard como por la campanita del encabezado (ver
+     * AppServiceProvider), para que ambos cuenten exactamente lo mismo.
+     */
+    public static function contarNuevosDesde($desde): int
+    {
+        if (! $desde) {
+            return 0;
+        }
+
+        return static::whereNull('folio_padre')->where('created_at', '>', $desde)->count();
+    }
+
+    /**
      * Folio visible: el sistema lo autogenera, ya no se captura a mano
      * (antes RN-05 exigía el folio de papel). Un folio raíz se ve
      * "VC-0002"; una subnota reutiliza el número del folio raíz con

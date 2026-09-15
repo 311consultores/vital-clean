@@ -39,10 +39,10 @@ class DashboardController extends Controller
 
         // #11: aviso simple de pedidos nuevos desde la última visita al dashboard
         // (sin infraestructura de tiempo real: se recalcula en cada carga/recarga).
-        $ultimaVisita = $request->session()->get('dashboard_ultima_visita');
-        $pedidosNuevos = $ultimaVisita
-            ? NotaRemision::whereNull('folio_padre')->where('created_at', '>', $ultimaVisita)->count()
-            : 0;
+        // Visitar el dashboard es lo que "marca como visto" — por eso la
+        // sesión se actualiza aquí y no en la campanita del encabezado
+        // (AppServiceProvider), que solo lee este mismo valor.
+        $pedidosNuevos = NotaRemision::contarNuevosDesde($request->session()->get('dashboard_ultima_visita'));
         $request->session()->put('dashboard_ultima_visita', now());
 
         return view('operaciones.dashboard', compact('kpis', 'ordenes', 'pedidosNuevos'));

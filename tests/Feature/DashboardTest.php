@@ -142,4 +142,61 @@ class DashboardTest extends TestCase
         $response->assertSee('<div class="timeline-cancelado">', false);
         $response->assertDontSee('class="timeline-step', false);
     }
+
+    public function test_campanita_del_encabezado_muestra_pedidos_nuevos_en_cualquier_pantalla(): void
+    {
+        // #11: la campanita usa la misma sesión 'dashboard_ultima_visita'
+        // que el aviso del dashboard, pero debe verse en cualquier pantalla
+        // de Admin/Operador, no solo en el dashboard. Se busca el HTML del
+        // badge (no solo el nombre de la clase, que también aparece en el
+        // <style> del layout) y se avanza el reloj para no depender de la
+        // precisión de segundo de los timestamps en la comparación ">".
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard')); // marca "visto" en t0
+
+        $this->travel(2)->seconds();
+        $this->crearOrden('RUTA'); // pedido nuevo después de t0
+
+        $response = $this->actingAs($admin)->get(route('planta.buscar'));
+
+        $response->assertOk();
+        $response->assertSee('class="header-bell-badge">1</span>', false);
+    }
+
+    public function test_campanita_no_aparece_sin_pedidos_nuevos(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response = $this->actingAs($admin)->get(route('planta.buscar'));
+
+        $response->assertOk();
+        $response->assertDontSee('class="header-bell-badge"', false);
+    }
+
+    public function test_visitar_el_dashboard_limpia_la_campanita(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $this->travel(2)->seconds();
+        $this->crearOrden('RUTA');
+
+        // Re-visitar el dashboard "marca como visto" de nuevo.
+        $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response = $this->actingAs($admin)->get(route('planta.buscar'));
+
+        $response->assertDontSee('class="header-bell-badge"', false);
+    }
+
+    public function test_vendedor_no_ve_la_campanita_de_pedidos_nuevos(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+
+        $response = $this->actingAs($vendedor)->get(route('vendedor.home'));
+
+        $response->assertOk();
+        $response->assertDontSee('class="header-bell"', false);
+    }
 }
