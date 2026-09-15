@@ -145,6 +145,6 @@ class AuditoriaController extends Controller
         });
 
         return redirect()->route('planta.buscar')
-            ->with('status', "Conteo de VC-".str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT)." guardado y bloqueado correctamente.");
+            ->with('status', "Conteo de {$orden->folio_display} guardado y bloqueado correctamente.");
     }
 }

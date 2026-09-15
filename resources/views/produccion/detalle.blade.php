@@ -73,19 +73,22 @@
                                 @endforeach
 
                                 @unless ($soloLectura)
-                                    <details>
+                                    @php $tieneErrorEstaLinea = $errors->has('foto.'.$linea->id_detalle) || old('dano.'.$linea->id_detalle) || old('comentario_dano.'.$linea->id_detalle); @endphp
+                                    <details @if ($tieneErrorEstaLinea) open @endif>
                                         <summary style="cursor:pointer; font-size:.85rem; color:var(--azul);">+ Reportar incidencia</summary>
                                         <div style="margin-top:.4rem; display:flex; flex-direction:column; gap:.3rem; max-width:220px;">
                                             <select name="dano[{{ $linea->id_detalle }}]">
                                                 <option value="">— Tipo —</option>
-                                                <option value="Quemado">Quemado</option>
-                                                <option value="Mancha">Mancha</option>
-                                                <option value="Roto">Roto</option>
-                                                <option value="Faltante">Faltante</option>
-                                                <option value="Otro">Otro</option>
+                                                @foreach (['Quemado', 'Mancha', 'Roto', 'Faltante', 'Otro'] as $tipo)
+                                                    <option value="{{ $tipo }}" @selected(old('dano.'.$linea->id_detalle) === $tipo)>{{ $tipo }}</option>
+                                                @endforeach
                                             </select>
-                                            <input type="text" name="comentario_dano[{{ $linea->id_detalle }}]" placeholder="Nota (opcional)" maxlength="255">
-                                            <input type="file" name="foto[{{ $linea->id_detalle }}]" accept="image/*" capture="environment">
+                                            <input type="text" name="comentario_dano[{{ $linea->id_detalle }}]" placeholder="Nota (opcional)" maxlength="255"
+                                                   value="{{ old('comentario_dano.'.$linea->id_detalle) }}">
+                                            <input type="file" name="foto[{{ $linea->id_detalle }}]" accept="image/*" capture="environment" class="foto-incidencia">
+                                            @error('foto.'.$linea->id_detalle)
+                                                <div class="field-error">{{ $message }}</div>
+                                            @enderror
                                         </div>
                                     </details>
                                 @endunless
@@ -114,4 +117,8 @@
             </div>
         @endif
     </form>
+
+    @unless ($soloLectura)
+        @include('partials.compresor-fotos')
+    @endunless
 @endsection

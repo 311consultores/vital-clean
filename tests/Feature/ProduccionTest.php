@@ -103,6 +103,29 @@ class ProduccionTest extends TestCase
         $this->assertStringContainsString('Roto', $detalle->incidencias()->first()->comentario);
     }
 
+    public function test_reportar_incidencia_con_foto_de_camara_moderna_no_falla(): void
+    {
+        // #9: fotos directo de la cámara del celular pueden pesar varios MB;
+        // el límite viejo (4096 KB) las rechazaba antes de llegar al storage.
+        Storage::fake('incidencias');
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioEnProceso(5);
+
+        $foto = UploadedFile::fake()->image('dano.jpg')->size(6000); // 6MB
+
+        $response = $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 5],
+            'dano' => [$detalle->id_detalle => 'Mancha'],
+            'comentario_dano' => [$detalle->id_detalle => 'mancha de vino'],
+            'foto' => [$detalle->id_detalle => $foto],
+        ]);
+
+        $response->assertSessionDoesntHaveErrors('foto.'.$detalle->id_detalle);
+        $incidencia = $detalle->incidencias()->first();
+        $this->assertNotNull($incidencia->foto_evidencia);
+        Storage::disk('incidencias')->assertExists($incidencia->foto_evidencia);
+    }
+
     public function test_operador_no_puede_reprocesar_folio_ya_listo(): void
     {
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
