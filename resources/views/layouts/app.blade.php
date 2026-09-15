@@ -186,6 +186,29 @@
             padding: .75rem 1rem; border-radius: .375rem; margin: 1.25rem 0; font-weight: 600;
             text-align: center;
         }
+
+        /* "+ Reportar daño/incidencia" en Planta y Producción: el
+           <summary> de un <details> estilizado como chip tipo "pill", con
+           suficiente área de toque para verse bien en móvil/tablet (uso
+           real de estas dos pantallas). */
+        summary.btn-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            cursor: pointer;
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--azul);
+            background: var(--gris-claro);
+            border: 1px solid #d7dee8;
+            border-radius: 999px;
+            padding: .45rem 1rem;
+            user-select: none;
+            list-style: none;
+        }
+        summary.btn-pill::-webkit-details-marker { display: none; }
+        summary.btn-pill:hover { border-color: var(--azul-claro); }
+        details[open] > summary.btn-pill { background: var(--azul); color: var(--blanco); border-color: var(--azul); }
     </style>
 </head>
 <body>

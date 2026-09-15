@@ -75,8 +75,8 @@
                                 @unless ($soloLectura)
                                     @php $tieneErrorEstaLinea = $errors->has('foto.'.$linea->id_detalle) || old('dano.'.$linea->id_detalle) || old('comentario_dano.'.$linea->id_detalle); @endphp
                                     <details @if ($tieneErrorEstaLinea) open @endif>
-                                        <summary style="cursor:pointer; font-size:.85rem; color:var(--azul);">+ Reportar incidencia</summary>
-                                        <div style="margin-top:.4rem; display:flex; flex-direction:column; gap:.3rem; max-width:220px;">
+                                        <summary class="btn-pill">+ Reportar incidencia</summary>
+                                        <div style="margin-top:.5rem; display:flex; flex-direction:column; gap:.3rem; max-width:220px;">
                                             <select name="dano[{{ $linea->id_detalle }}]">
                                                 <option value="">— Tipo —</option>
                                                 @foreach (['Quemado', 'Mancha', 'Roto', 'Faltante', 'Otro'] as $tipo)
