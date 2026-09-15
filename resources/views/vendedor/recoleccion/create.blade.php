@@ -59,14 +59,16 @@
 
         <div class="card">
             <h2 style="font-size:1.1rem; margin-top:0;">Prendas del Pedido</h2>
-            <table class="data-table" id="tabla-carrito">
-                <thead>
-                    <tr><th>Prenda</th><th>Categoría</th><th style="width:110px;">Cantidad</th><th></th></tr>
-                </thead>
-                <tbody id="carrito-filas">
-                    <tr id="carrito-vacio"><td colspan="4">Aún no has agregado ninguna prenda.</td></tr>
-                </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+                <table class="data-table" id="tabla-carrito">
+                    <thead>
+                        <tr><th>Prenda</th><th>Categoría</th><th style="width:110px;">Cantidad</th><th></th></tr>
+                    </thead>
+                    <tbody id="carrito-filas">
+                        <tr id="carrito-vacio"><td colspan="4">Aún no has agregado ninguna prenda.</td></tr>
+                    </tbody>
+                </table>
+            </div>
             <p style="margin-top:.75rem;"><strong>Total de piezas: <span id="total-piezas">0</span></strong></p>
         </div>
 
