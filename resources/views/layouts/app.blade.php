@@ -104,6 +104,37 @@
             padding: 1.25rem 0;
             border-right: 1px solid #e5e7eb;
         }
+        .sidebar-toggle {
+            display: none;
+            background: transparent; border: none; color: var(--blanco);
+            padding: .4rem; cursor: pointer; flex-shrink: 0; border-radius: .375rem;
+        }
+        .sidebar-toggle:hover { background: rgba(255,255,255,.12); }
+        .sidebar-close { display: none; }
+        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 45; }
+        .sidebar-backdrop.is-open { display: block; }
+        /* El sidebar de Admin/Operador (Panel Web) era fijo y nunca
+           colapsaba, así que en pantallas angostas empujaba TODA la página
+           a un ancho enorme y forzaba scroll horizontal general — en vez de
+           eso, aquí se vuelve un cajón ("drawer") que se desliza desde la
+           izquierda al tocar el ícono de menú en el encabezado. */
+        @media (max-width: 860px) {
+            .sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; }
+            nav.sidebar {
+                position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+                width: 250px; max-width: 80vw;
+                transform: translateX(-100%);
+                transition: transform .25s ease;
+                overflow-y: auto;
+                box-shadow: 2px 0 12px rgba(0,0,0,.2);
+            }
+            nav.sidebar.is-open { transform: translateX(0); }
+            .sidebar-close {
+                display: block; margin: 0 0 .5rem 1.25rem; background: transparent;
+                border: none; font-size: 1.5rem; line-height: 1; color: #6b7280; cursor: pointer;
+            }
+            .content { padding: 1rem; }
+        }
         nav.sidebar .section-title {
             font-size: .72rem;
             text-transform: uppercase;
@@ -120,7 +151,12 @@
         }
         nav.sidebar a:hover { background: var(--gris-claro); }
         nav.sidebar a.active { background: var(--gris-claro); font-weight: 600; color: var(--azul); border-right: 3px solid var(--azul); }
-        .content { flex: 1; padding: 1.5rem; max-width: 1080px; }
+        /* min-width:0 es necesario porque, en móvil, .content queda como
+           único hijo flex de .layout (nav.sidebar se vuelve position:fixed)
+           — sin esto, un flex item nunca se encoge más allá del ancho
+           mínimo de su contenido (inputs con min-width, tablas, etc.) y
+           empuja toda la página a desbordarse horizontalmente. */
+        .content { flex: 1; min-width: 0; padding: 1.5rem; max-width: 1080px; }
         main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
         .card {
             background: var(--blanco);
@@ -151,7 +187,11 @@
         table.data-table th, table.data-table td { text-align: left; padding: .65rem .9rem; border-bottom: 1px solid #eee; font-size: .9rem; }
         table.data-table th { background: var(--azul); color: var(--blanco); font-weight: 600; }
         table.data-table tr:hover td { background: #fafafa; }
-        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: 1rem; }
+        /* Buscadores con min-width fijo (dashboard, catálogos) — a partir
+           de aquí ya no compiten en la misma fila que el título, y pueden
+           encoger sin forzar scroll horizontal. */
+        .page-header form { display: flex; flex-wrap: wrap; gap: .4rem; }
         .page-header h1 { margin: 0; font-size: 1.3rem; color: var(--azul); }
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; }
@@ -231,7 +271,18 @@
 <body>
     @auth
         <header class="app-header">
-            <span class="brand">@include('partials.logo', ['size' => 30, 'stacked' => false, 'light' => true])</span>
+            <span style="display:flex; align-items:center; gap:.4rem; min-width:0;">
+                @if (in_array(auth()->user()->rol, ['ADMIN', 'OPERADOR'], true))
+                    <button type="button" class="sidebar-toggle" id="btn-sidebar-toggle" aria-label="Abrir menú">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                    </button>
+                @endif
+                <span class="brand">@include('partials.logo', ['size' => 30, 'stacked' => false, 'light' => true])</span>
+            </span>
             <span class="header-user">
                 @if (in_array(auth()->user()->rol, ['ADMIN', 'OPERADOR'], true))
                     <a href="{{ route('operaciones.dashboard') }}" class="header-bell" title="Pedidos nuevos">
@@ -264,7 +315,8 @@
     @auth
         @if (in_array(auth()->user()->rol, ['ADMIN', 'OPERADOR'], true))
             <div class="layout">
-                <nav class="sidebar">
+                <nav class="sidebar" id="app-sidebar">
+                    <button type="button" class="sidebar-close" id="btn-sidebar-close" aria-label="Cerrar menú">&times;</button>
                     <a href="{{ route('operaciones.dashboard') }}" class="{{ request()->routeIs('operaciones.dashboard') ? 'active' : '' }}">Operaciones</a>
                     <a href="{{ route('planta.buscar') }}" class="{{ request()->routeIs('planta.*') ? 'active' : '' }}">Auditoría de Planta</a>
                     <a href="{{ route('produccion.buscar') }}" class="{{ request()->routeIs('produccion.*') ? 'active' : '' }}">Control de Producción</a>
@@ -279,6 +331,7 @@
                         <a href="{{ route('operaciones.usuarios.index') }}" class="{{ request()->routeIs('operaciones.usuarios.*') ? 'active' : '' }}">Usuarios</a>
                     @endif
                 </nav>
+                <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
                 <div class="content">
                     @if (session('status'))
                         <div class="alert alert-status">{{ session('status') }}</div>
@@ -289,6 +342,31 @@
                     @yield('content')
                 </div>
             </div>
+            <script>
+                (function () {
+                    var toggle = document.getElementById('btn-sidebar-toggle');
+                    var cerrar = document.getElementById('btn-sidebar-close');
+                    var sidebar = document.getElementById('app-sidebar');
+                    var backdrop = document.getElementById('sidebar-backdrop');
+                    if (!toggle || !sidebar || !backdrop) return;
+
+                    function abrirMenu() {
+                        sidebar.classList.add('is-open');
+                        backdrop.classList.add('is-open');
+                    }
+                    function cerrarMenu() {
+                        sidebar.classList.remove('is-open');
+                        backdrop.classList.remove('is-open');
+                    }
+
+                    toggle.addEventListener('click', abrirMenu);
+                    if (cerrar) cerrar.addEventListener('click', cerrarMenu);
+                    backdrop.addEventListener('click', cerrarMenu);
+                    sidebar.querySelectorAll('a').forEach(function (enlace) {
+                        enlace.addEventListener('click', cerrarMenu);
+                    });
+                })();
+            </script>
         @else
             <main>
                 @yield('content')
