@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Cliente;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
+use App\Models\TarifaCliente;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -29,6 +30,7 @@ class RecoleccionTest extends TestCase
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
         $cliente = Cliente::factory()->create(['estatus_credito' => true]);
         $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicio->id_servicio]);
 
         $this->actingAs($vendedor);
 
@@ -85,6 +87,39 @@ class RecoleccionTest extends TestCase
         $response->assertSessionHasErrors('cantidades');
     }
 
+    public function test_no_se_puede_agregar_una_prenda_sin_tarifa_pactada_con_el_cliente(): void
+    {
+        // Bug: los precios se calculan por tarifa pactada (RN-01); un
+        // servicio sin TarifaCliente para este cliente no debe poder
+        // agregarse al pedido aunque exista en el catálogo general.
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $cliente = Cliente::factory()->create(['estatus_credito' => true]);
+        $servicio = Servicio::factory()->create(); // sin tarifa para este cliente
+
+        $response = $this->actingAs($vendedor)->post(route('vendedor.recoleccion.store'), [
+            'id_cliente' => $cliente->id_cliente,
+            'cantidades' => [$servicio->id_servicio => 3],
+        ]);
+
+        $response->assertSessionHasErrors('cantidades');
+        $this->assertDatabaseCount('ope_notas_remision', 0);
+    }
+
+    public function test_endpoint_de_servicios_solo_regresa_los_tarifados_para_el_cliente(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $cliente = Cliente::factory()->create();
+        $tarifado = Servicio::factory()->create(['descripcion' => 'Toalla Tarifada']);
+        $sinTarifa = Servicio::factory()->create(['descripcion' => 'Sin Tarifa']);
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $tarifado->id_servicio]);
+
+        $response = $this->actingAs($vendedor)->getJson(route('vendedor.recoleccion.servicios', $cliente));
+
+        $response->assertOk();
+        $response->assertJsonFragment(['descripcion' => 'Toalla Tarifada']);
+        $response->assertJsonMissing(['descripcion' => 'Sin Tarifa']);
+    }
+
     public function test_rn04_blocks_cliente_con_credito_suspendido(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
@@ -105,6 +140,7 @@ class RecoleccionTest extends TestCase
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
         $cliente = Cliente::factory()->create();
         $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicio->id_servicio]);
 
         $this->actingAs($vendedor)->post(route('vendedor.recoleccion.store'), [
             'folio_fisico' => '02149',
@@ -151,6 +187,7 @@ class RecoleccionTest extends TestCase
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
         $cliente = Cliente::factory()->create(['estatus_credito' => true, 'telefono' => '9997808557']);
         $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicio->id_servicio]);
 
         $this->actingAs($vendedor);
         $this->post(route('vendedor.recoleccion.store'), [
@@ -173,6 +210,7 @@ class RecoleccionTest extends TestCase
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
         $cliente = Cliente::factory()->create(['estatus_credito' => true, 'telefono' => null]);
         $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicio->id_servicio]);
 
         $this->actingAs($vendedor);
         $this->post(route('vendedor.recoleccion.store'), [

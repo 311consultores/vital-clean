@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Cliente;
+use App\Models\TarifaCliente;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -45,6 +46,21 @@ class RecoleccionRequest extends FormRequest
 
             if (empty($cantidades)) {
                 $validator->errors()->add('cantidades', 'Agrega al menos una prenda con cantidad mayor a cero.');
+
+                return;
+            }
+
+            // Bug: RN-01 calcula el precio por tarifa pactada; un artículo
+            // sin tarifa para este cliente no debe poder agregarse (el UI ya
+            // filtra, pero se revalida aquí por si el catálogo es viejo).
+            $serviciosTarifados = TarifaCliente::where('id_cliente', $this->input('id_cliente'))
+                ->pluck('id_servicio')
+                ->all();
+
+            $noTarifados = array_diff(array_map('intval', array_keys($cantidades)), $serviciosTarifados);
+
+            if (! empty($noTarifados)) {
+                $validator->errors()->add('cantidades', 'Uno o más artículos ya no tienen un precio pactado vigente con este cliente. Actualiza la página e inténtalo de nuevo.');
             }
         });
     }
