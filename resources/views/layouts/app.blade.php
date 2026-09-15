@@ -36,13 +36,40 @@
         header.app-header {
             background: var(--azul);
             color: var(--blanco);
-            padding: .9rem 1.25rem;
+            padding: .7rem 1rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: .5rem;
         }
         header.app-header a { color: var(--blanco); text-decoration: none; font-weight: 600; }
-        header.app-header .brand { font-size: 1.1rem; letter-spacing: .02em; }
+        header.app-header .brand { font-size: 1.1rem; letter-spacing: .02em; flex-shrink: 0; }
+        header.app-header .header-user {
+            display: flex; align-items: center; gap: .6rem; min-width: 0;
+        }
+        header.app-header .header-user-name { white-space: nowrap; }
+        header.app-header .btn-logout {
+            display: flex; align-items: center; gap: .4rem;
+            background: var(--rojo); flex-shrink: 0;
+        }
+        header.app-header .btn-logout svg { flex-shrink: 0; }
+        /* Pantallas medianas: el nombre completo ya no cabe entero junto a
+           la insignia de rol y "Salir" — se trunca con elipsis en vez de
+           empujar el botón fuera de la pantalla o encimarse. */
+        @media (max-width: 700px) {
+            header.app-header .header-user-name {
+                overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+            }
+        }
+        /* Móvil (uso real de este panel en campo, Anexo App): con poco
+           ancho, mejor ocultar el nombre por completo y que "Salir" sea un
+           ícono solo — la insignia de rol y el ícono bastan para
+           identificar la sesión activa. */
+        @media (max-width: 480px) {
+            header.app-header .header-user-name { display: none; }
+            header.app-header .btn-logout .logout-text { display: none; }
+            header.app-header .btn-logout { padding: .5rem .65rem; }
+        }
 
         /* Identidad de marca — ver resources/views/partials/logo.blade.php */
         .vc-logo { display: flex; align-items: center; gap: .45rem; }
@@ -165,12 +192,19 @@
     @auth
         <header class="app-header">
             <span class="brand">@include('partials.logo', ['size' => 30, 'stacked' => false, 'light' => true])</span>
-            <span style="display:flex; align-items:center; gap:.75rem;">
-                <span>{{ auth()->user()->nombre_completo ?? auth()->user()->username }}</span>
+            <span class="header-user">
+                <span class="header-user-name">{{ auth()->user()->nombre_completo ?? auth()->user()->username }}</span>
                 <span class="badge badge-{{ strtolower(auth()->user()->rol) }}">{{ auth()->user()->rol }}</span>
                 <form method="POST" action="{{ route('logout') }}" style="margin:0;">
                     @csrf
-                    <button type="submit" class="btn" style="background:var(--rojo);">Salir</button>
+                    <button type="submit" class="btn btn-logout" title="Salir">
+                        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        <span class="logout-text">Salir</span>
+                    </button>
                 </form>
             </span>
         </header>
