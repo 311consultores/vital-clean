@@ -83,19 +83,13 @@
                             <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : '—' }}</td>
                         @endunless
                         <td>
-                            @forelse ($linea->incidencias as $incidencia)
-                                <div style="display:flex; align-items:center; gap:.4rem; margin-bottom:.3rem;">
-                                    @if ($incidencia->foto_evidencia)
-                                        <a href="{{ asset('uploads/incidencias/'.$incidencia->foto_evidencia) }}" target="_blank" rel="noopener">
-                                            <img src="{{ asset('uploads/incidencias/'.$incidencia->foto_evidencia) }}" alt="Evidencia"
-                                                 style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid #ddd;">
-                                        </a>
-                                    @endif
-                                    <span class="badge" style="background:var(--rojo);">{{ $incidencia->comentario ?? 'Daño' }}</span>
-                                </div>
-                            @empty
+                            @if ($linea->incidencias->isNotEmpty())
+                                <span class="badge" style="background:var(--rojo);">
+                                    {{ $linea->incidencias->count() }} {{ $linea->incidencias->count() === 1 ? 'incidencia' : 'incidencias' }}
+                                </span>
+                            @else
                                 —
-                            @endforelse
+                            @endif
                         </td>
                     </tr>
                 @endforeach
@@ -105,6 +99,33 @@
             <p style="margin-top:.75rem;"><strong>Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($orden->detalle->sum('subtotal'), 2) : 'Pendiente de conteo en planta' }}</strong></p>
         @endunless
     </div>
+
+    @php $incidenciasOrden = $orden->detalle->pluck('incidencias')->flatten(); @endphp
+    @if ($incidenciasOrden->isNotEmpty())
+        <div class="card" style="max-width:640px; margin-top:1rem;">
+            <h2 style="font-size:1rem; margin-top:0;">Incidencias Reportadas</h2>
+            @foreach ($orden->detalle as $linea)
+                @foreach ($linea->incidencias as $incidencia)
+                    <div style="border-bottom:1px solid #eee; padding:.6rem 0; font-size:.85rem; display:flex; gap:.6rem; align-items:flex-start;">
+                        @if ($incidencia->foto_evidencia)
+                            <a href="{{ asset('uploads/incidencias/'.$incidencia->foto_evidencia) }}" target="_blank" rel="noopener" style="flex-shrink:0;">
+                                <img src="{{ asset('uploads/incidencias/'.$incidencia->foto_evidencia) }}" alt="Evidencia"
+                                     style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid #ddd;">
+                            </a>
+                        @else
+                            <div style="width:64px; height:64px; flex-shrink:0; border-radius:6px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:.7rem; text-align:center;">
+                                sin foto
+                            </div>
+                        @endif
+                        <div>
+                            <p style="margin:0 0 .25rem;"><strong>{{ $linea->servicio->descripcion }}</strong></p>
+                            <p style="margin:0; color:#6b7280;">{{ $incidencia->comentario ?? 'Sin descripción' }}</p>
+                        </div>
+                    </div>
+                @endforeach
+            @endforeach
+        </div>
+    @endif
 
     @if ($orden->subnotas->isNotEmpty())
         <div class="card" style="max-width:640px; margin-top:1rem;">
