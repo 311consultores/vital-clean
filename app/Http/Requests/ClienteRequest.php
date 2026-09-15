@@ -27,6 +27,8 @@ class ClienteRequest extends FormRequest
             'telefono' => ['nullable', 'string', 'max:15'],
             'email_facturacion' => ['nullable', 'email', 'max:100'],
             'estatus_credito' => ['sometimes', 'boolean'],
+            // #3: al dar de alta un cliente nuevo, permite clonar el tarifario de otro ya existente.
+            'clonar_tarifario_de' => ['nullable', 'integer', Rule::exists('cat_clientes', 'id_cliente')],
         ];
     }
 
@@ -37,6 +39,7 @@ class ClienteRequest extends FormRequest
             'razon_social' => 'razón social',
             'email_facturacion' => 'email de facturación',
             'estatus_credito' => 'estatus de crédito',
+            'clonar_tarifario_de' => 'cliente para clonar tarifario',
         ];
     }
 }

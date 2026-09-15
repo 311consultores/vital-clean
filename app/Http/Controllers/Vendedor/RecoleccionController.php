@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
 use App\Support\WhatsApp;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,12 +26,44 @@ class RecoleccionController extends Controller
 {
     protected const SESSION_KEY = 'recoleccion_pendiente';
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $clientes = Cliente::where('estatus_credito', true)->orderBy('nombre_comercial')->get();
-        $servicios = Servicio::orderBy('categoria')->orderBy('descripcion')->get();
+
+        // Si venimos de un error de validación, se reconstruye el catálogo
+        // del cliente ya elegido para no perder el carrito armado (ver script
+        // de la vista, CANTIDADES_PREVIAS).
+        $servicios = old('id_cliente')
+            ? $this->serviciosDelCliente((int) old('id_cliente'))
+            : collect();
 
         return view('vendedor.recoleccion.create', compact('clientes', 'servicios'));
+    }
+
+    /**
+     * Bug: los precios se calculan por tarifa pactada por cliente (RN-01),
+     * así que el buscador de prendas solo debe ofrecer lo que el cliente
+     * tiene tarifado — evita levantar pedidos con artículos sin precio.
+     */
+    public function serviciosCliente(Cliente $cliente): JsonResponse
+    {
+        return response()->json(
+            $this->serviciosDelCliente($cliente->id_cliente)
+                ->map(fn (Servicio $s) => [
+                    'id' => $s->id_servicio,
+                    'descripcion' => $s->descripcion,
+                    'categoria' => $s->categoria,
+                    'unidad' => $s->unidad,
+                ])
+        );
+    }
+
+    protected function serviciosDelCliente(int $idCliente)
+    {
+        return Servicio::whereHas('tarifas', fn ($q) => $q->where('id_cliente', $idCliente))
+            ->orderBy('categoria')
+            ->orderBy('descripcion')
+            ->get();
     }
 
     public function store(RecoleccionRequest $request): RedirectResponse
@@ -40,7 +73,6 @@ class RecoleccionController extends Controller
             ->map(fn ($cantidad) => (int) $cantidad);
 
         $request->session()->put(self::SESSION_KEY, [
-            'folio_fisico' => $request->input('folio_fisico'),
             'id_cliente' => (int) $request->input('id_cliente'),
             'fecha_entrega_prog' => $request->input('fecha_entrega_prog'),
             'cantidades' => $cantidades->all(),
@@ -72,7 +104,6 @@ class RecoleccionController extends Controller
             'cliente' => $cliente,
             'items' => $items,
             'totalPiezas' => $totalPiezas,
-            'folioFisico' => $pendiente['folio_fisico'],
         ]);
     }
 
@@ -103,8 +134,11 @@ class RecoleccionController extends Controller
         $firmaBinaria = base64_decode(substr($request->input('firma'), strlen('data:image/png;base64,')));
 
         $nota = DB::transaction(function () use ($pendiente, $firmaBinaria, $request) {
+            // folio_fisico es NOT NULL y depende de folio_sistema (autoincrement),
+            // que solo existe una vez insertada la fila: se crea con un valor
+            // temporal y se reemplaza de inmediato por el folio autogenerado.
             $nota = NotaRemision::create([
-                'folio_fisico' => $pendiente['folio_fisico'],
+                'folio_fisico' => 'PENDIENTE',
                 'id_cliente' => $pendiente['id_cliente'],
                 'id_vendedor' => $request->user()->id_usuario,
                 'fecha_recoleccion' => now(),
@@ -122,6 +156,8 @@ class RecoleccionController extends Controller
                     'cantidad_entrada' => $cantidad,
                 ]);
             }
+
+            $nota->update(['folio_fisico' => $nota->folio_display]);
 
             return $nota;
         });

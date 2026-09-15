@@ -6,8 +6,7 @@
     <div class="page-header"><h1>Detalle de Pedido</h1></div>
 
     <div class="card" style="max-width:600px;">
-        <p><strong>Nota No.:</strong> VC-{{ str_pad($nota->folio_sistema, 4, '0', STR_PAD_LEFT) }}</p>
-        <p><strong>Folio Físico:</strong> {{ $nota->folio_fisico }}</p>
+        <p><strong>Folio:</strong> {{ $nota->folio_display }}</p>
         <p><strong>Cliente:</strong> {{ $nota->cliente->nombre_comercial }}</p>
         <p><strong>Estatus:</strong> <span class="badge badge-{{ strtolower($nota->estatus_orden) }}">{{ $nota->estatus_orden }}</span></p>
         <p><strong>Fecha de Recolección:</strong> {{ $nota->fecha_recoleccion->format('d/m/Y H:i') }}</p>

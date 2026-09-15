@@ -132,6 +132,6 @@ class ProduccionController extends Controller
         });
 
         return redirect()->route('produccion.buscar')
-            ->with('status', "Folio VC-".str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT)." marcado como LISTO para entrega.");
+            ->with('status', "Folio {$orden->folio_display} marcado como LISTO para entrega.");
     }
 }

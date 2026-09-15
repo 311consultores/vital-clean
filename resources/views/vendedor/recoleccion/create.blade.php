@@ -31,12 +31,6 @@
             </div>
 
             <div class="form-group">
-                <label for="folio_fisico">Folio Físico (nota de remisión en papel) *</label>
-                <input type="text" id="folio_fisico" name="folio_fisico" maxlength="20"
-                       value="{{ old('folio_fisico') }}" placeholder="Ej. 02149" required style="max-width:200px;">
-            </div>
-
-            <div class="form-group">
                 <label for="fecha_entrega_prog">Fecha de Entrega Comprometida</label>
                 <input type="date" id="fecha_entrega_prog" name="fecha_entrega_prog"
                        value="{{ old('fecha_entrega_prog') }}" min="{{ now()->toDateString() }}" style="max-width:200px;">
@@ -45,8 +39,9 @@
 
         <div class="card" style="margin-bottom:1rem;">
             <h2 style="font-size:1.1rem; margin-top:0;">Buscar Prenda</h2>
+            <p id="aviso-sin-cliente" style="color:#6b7280; font-size:.9rem;">Elige primero un cliente para ver las prendas con precio pactado.</p>
 
-            <div style="position:relative; max-width:420px;">
+            <div id="buscador-prenda-wrap" style="position:relative; max-width:420px; display:none;">
                 <input type="text" id="buscador-prenda" autocomplete="off"
                        placeholder="Escribe un nombre o categoría (ej. toalla, hotelería)..."
                        style="width:100%; padding:.65rem .8rem; font-size:1rem; border:1px solid #d1d5db; border-radius:.375rem;">
@@ -64,14 +59,16 @@
 
         <div class="card">
             <h2 style="font-size:1.1rem; margin-top:0;">Prendas del Pedido</h2>
-            <table class="data-table" id="tabla-carrito">
-                <thead>
-                    <tr><th>Prenda</th><th>Categoría</th><th style="width:110px;">Cantidad</th><th></th></tr>
-                </thead>
-                <tbody id="carrito-filas">
-                    <tr id="carrito-vacio"><td colspan="4">Aún no has agregado ninguna prenda.</td></tr>
-                </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+                <table class="data-table" id="tabla-carrito">
+                    <thead>
+                        <tr><th>Prenda</th><th>Categoría</th><th style="width:110px;">Cantidad</th><th></th></tr>
+                    </thead>
+                    <tbody id="carrito-filas">
+                        <tr id="carrito-vacio"><td colspan="4">Aún no has agregado ninguna prenda.</td></tr>
+                    </tbody>
+                </table>
+            </div>
             <p style="margin-top:.75rem;"><strong>Total de piezas: <span id="total-piezas">0</span></strong></p>
         </div>
 
@@ -93,12 +90,21 @@
     @endphp
 
     <script>
+        // Bug: los precios se calculan por tarifa pactada por cliente
+        // (RN-01), así que solo se puede levantar lo que el cliente elegido
+        // tiene tarifado. El catálogo ya no se precarga completo: se pide
+        // por AJAX cada vez que cambia el cliente.
         var CATALOGO = @json($catalogoJs);
+        var CLIENTE_CATALOGO_ACTUAL = {{ old('id_cliente') ? (int) old('id_cliente') : 'null' }};
+        var URL_SERVICIOS_CLIENTE = @json(route('vendedor.recoleccion.servicios', ['cliente' => '__ID__']));
 
         // Si la validación falló, no perder lo que ya se había armado.
         var CANTIDADES_PREVIAS = @json(old('cantidades', []));
 
         (function () {
+            var selectCliente = document.getElementById('id_cliente');
+            var avisoSinCliente = document.getElementById('aviso-sin-cliente');
+            var buscadorWrap = document.getElementById('buscador-prenda-wrap');
             var input = document.getElementById('buscador-prenda');
             var caja = document.getElementById('sugerencias');
             var seleccionBox = document.getElementById('prenda-seleccionada');
@@ -112,6 +118,49 @@
 
             var carrito = {}; // { id_servicio: { descripcion, categoria, unidad, cantidad } }
             var prendaActual = null;
+
+            function mostrarBuscador(mostrar) {
+                avisoSinCliente.style.display = mostrar ? 'none' : 'block';
+                buscadorWrap.style.display = mostrar ? 'block' : 'none';
+            }
+
+            function cargarServiciosDeCliente(idCliente, callback) {
+                var url = URL_SERVICIOS_CLIENTE.replace('__ID__', idCliente);
+                fetch(url, {headers: {'Accept': 'application/json'}})
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        CATALOGO = data;
+                        CLIENTE_CATALOGO_ACTUAL = parseInt(idCliente, 10);
+                        if (callback) callback();
+                    })
+                    .catch(function () {
+                        CATALOGO = [];
+                        alert('No se pudieron cargar las prendas tarifadas de este cliente.');
+                    });
+            }
+
+            selectCliente.addEventListener('change', function () {
+                var idCliente = selectCliente.value;
+                if (!idCliente) {
+                    mostrarBuscador(false);
+                    return;
+                }
+
+                // Cambiar de cliente invalida el carrito armado (las prendas
+                // y precios pactados dependen del cliente).
+                if (CLIENTE_CATALOGO_ACTUAL !== null && CLIENTE_CATALOGO_ACTUAL !== parseInt(idCliente, 10) && Object.keys(carrito).length > 0) {
+                    carrito = {};
+                }
+
+                cargarServiciosDeCliente(idCliente, function () {
+                    renderCarrito();
+                    mostrarBuscador(true);
+                });
+            });
+
+            if (CLIENTE_CATALOGO_ACTUAL) {
+                mostrarBuscador(true);
+            }
 
             function normalizar(texto) {
                 return (texto || '').toString().toLowerCase()

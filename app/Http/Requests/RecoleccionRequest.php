@@ -3,13 +3,15 @@
 namespace App\Http\Requests;
 
 use App\Models\Cliente;
+use App\Models\TarifaCliente;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 /**
  * Validación del checklist de recolección (CU-01, Anexo App pantallas 04-05).
  *
- * RN-05: folio_fisico obligatorio (puente papel/digital).
+ * El folio ya no se captura a mano: el sistema lo autogenera (VC-000X)
+ * al confirmar el folio (ver RecoleccionController::confirmar).
  * RN-04: bloqueo si el cliente tiene crédito suspendido.
  */
 class RecoleccionRequest extends FormRequest
@@ -22,7 +24,6 @@ class RecoleccionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'folio_fisico' => ['required', 'string', 'max:20'],
             'id_cliente' => ['required', 'integer', 'exists:cat_clientes,id_cliente'],
             'fecha_entrega_prog' => ['nullable', 'date', 'after_or_equal:today'],
             'cantidades' => ['required', 'array'],
@@ -45,6 +46,21 @@ class RecoleccionRequest extends FormRequest
 
             if (empty($cantidades)) {
                 $validator->errors()->add('cantidades', 'Agrega al menos una prenda con cantidad mayor a cero.');
+
+                return;
+            }
+
+            // Bug: RN-01 calcula el precio por tarifa pactada; un artículo
+            // sin tarifa para este cliente no debe poder agregarse (el UI ya
+            // filtra, pero se revalida aquí por si el catálogo es viejo).
+            $serviciosTarifados = TarifaCliente::where('id_cliente', $this->input('id_cliente'))
+                ->pluck('id_servicio')
+                ->all();
+
+            $noTarifados = array_diff(array_map('intval', array_keys($cantidades)), $serviciosTarifados);
+
+            if (! empty($noTarifados)) {
+                $validator->errors()->add('cantidades', 'Uno o más artículos ya no tienen un precio pactado vigente con este cliente. Actualiza la página e inténtalo de nuevo.');
             }
         });
     }
