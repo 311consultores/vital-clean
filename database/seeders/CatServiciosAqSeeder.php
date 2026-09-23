@@ -93,6 +93,10 @@ class CatServiciosAqSeeder extends Seeder
             ['SERVICIO DE LAVANDERIA', 'KG', 'Otros'],
             ['SERVICIO DE LAVANDERIA INTEGRAL', 'KG', 'Otros'],
             ['SERVICIO DE TINTORERIA', 'PZA', 'Otros'],
+            // #1: conceptos genéricos de lavado y desmanche, además de los
+            // servicios específicos ya listados arriba.
+            ['LAVADO', 'PZA', 'Otros'],
+            ['DESMANCHE', 'PZA', 'Otros'],
         ];
     }
 }

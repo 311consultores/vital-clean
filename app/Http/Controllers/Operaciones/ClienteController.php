@@ -23,12 +23,29 @@ class ClienteController extends Controller
 
     public function create(): View
     {
-        return view('operaciones.clientes.create');
+        // #3: candidatos para clonar tarifario (solo clientes que ya tienen tarifas capturadas).
+        $clientesConTarifas = Cliente::whereHas('tarifas')->orderBy('nombre_comercial')->get();
+
+        return view('operaciones.clientes.create', compact('clientesConTarifas'));
     }
 
     public function store(ClienteRequest $request): RedirectResponse
     {
-        Cliente::create($request->validated() + ['estatus_credito' => $request->boolean('estatus_credito')]);
+        $datos = $request->validated();
+        $clonarDe = $datos['clonar_tarifario_de'] ?? null;
+        unset($datos['clonar_tarifario_de']);
+
+        $cliente = Cliente::create($datos + ['estatus_credito' => $request->boolean('estatus_credito')]);
+
+        if ($clonarDe) {
+            $origen = Cliente::with('tarifas')->find($clonarDe);
+            foreach ($origen?->tarifas ?? [] as $tarifa) {
+                $cliente->tarifas()->create([
+                    'id_servicio' => $tarifa->id_servicio,
+                    'precio_pactado' => $tarifa->precio_pactado,
+                ]);
+            }
+        }
 
         return redirect()->route('operaciones.clientes.index')->with('status', 'Cliente creado correctamente.');
     }

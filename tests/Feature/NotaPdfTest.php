@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
+use App\Models\Incidencia;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
 use App\Models\Usuario;
@@ -70,6 +71,46 @@ class NotaPdfTest extends TestCase
         $response = $this->get($url);
 
         $response->assertForbidden();
+    }
+
+    public function test_el_pdf_nunca_muestra_precios_sin_importar_el_rol(): void
+    {
+        // El precio se informa al cliente por su factura, no por la nota de
+        // remisión — el PDF no debe mostrar precios para ningún rol.
+        $orden = $this->crearFolio();
+        $orden->detalle()->first()->update(['precio_aplicado' => 15.00, 'subtotal' => 75.00]);
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+
+        $url = WhatsApp::linkPdf($orden);
+        $response = $this->actingAs($admin)->get($url);
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        $html = view('notas.pdf', ['orden' => $orden->load('detalle.servicio', 'detalle.incidencias')])->render();
+        $this->assertStringNotContainsString('Precio', $html);
+        $this->assertStringNotContainsString('75.00', $html);
+    }
+
+    public function test_el_pdf_muestra_el_total_de_piezas(): void
+    {
+        $orden = $this->crearFolio();
+
+        $html = view('notas.pdf', ['orden' => $orden->load('detalle.servicio', 'detalle.incidencias')])->render();
+
+        $this->assertStringContainsString('Total de piezas: 5', $html);
+    }
+
+    public function test_el_pdf_muestra_las_incidencias_reportadas(): void
+    {
+        $orden = $this->crearFolio();
+        $detalle = $orden->detalle()->first();
+        Incidencia::create(['id_detalle' => $detalle->id_detalle, 'comentario' => 'Mancha de vino']);
+
+        $html = view('notas.pdf', ['orden' => $orden->load('detalle.servicio', 'detalle.incidencias')])->render();
+
+        $this->assertStringContainsString('Incidencias Reportadas', $html);
+        $this->assertStringContainsString('Mancha de vino', $html);
     }
 
     public function test_mensaje_de_whatsapp_incluye_el_enlace_al_pdf(): void

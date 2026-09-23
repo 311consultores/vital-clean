@@ -14,6 +14,7 @@
                 <th>Descripción</th>
                 <th>Unidad</th>
                 <th>Categoría</th>
+                <th>Color</th>
                 <th></th>
             </tr>
         </thead>
@@ -23,6 +24,7 @@
                     <td>{{ $servicio->descripcion }}</td>
                     <td>{{ $servicio->unidad }}</td>
                     <td>{{ $servicio->categoria ?? '—' }}</td>
+                    <td>{{ $servicio->requiere_color ? 'Sí' : '—' }}</td>
                     <td class="actions-cell">
                         <a class="btn btn-sm" href="{{ route('operaciones.servicios.edit', $servicio) }}">Editar</a>
                         <form method="POST" action="{{ route('operaciones.servicios.destroy', $servicio) }}"
@@ -34,7 +36,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="4">Aún no hay servicios registrados.</td></tr>
+                <tr><td colspan="5">Aún no hay servicios registrados.</td></tr>
             @endforelse
         </tbody>
     </table>

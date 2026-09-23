@@ -23,6 +23,7 @@ class ServicioRequest extends FormRequest
             'descripcion' => ['required', 'string', 'max:100', Rule::unique('cat_servicios', 'descripcion')->ignore($servicioId, 'id_servicio')],
             'unidad' => ['required', Rule::in(['PZA', 'KG'])],
             'categoria' => ['nullable', 'string', 'max:50'],
+            'requiere_color' => ['nullable', 'boolean'],
         ];
     }
 }

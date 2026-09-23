@@ -57,12 +57,11 @@ class ProduccionController extends Controller
             return back()->withInput()->with('error', "No se encontró ningún folio con \"{$folio}\".");
         }
 
-        $esAdmin = $request->user()->rol === 'ADMIN';
-
-        if ($orden->estatus_orden !== self::ESTATUS_PROCESABLE && ! $esAdmin) {
-            return back()->withInput()->with('error', "El folio {$orden->folio_fisico} está en estatus {$orden->estatus_orden}; no está listo para cierre de producción o ya se cerró.");
-        }
-
+        // Si el folio no está listo para cierre de producción (o ya se
+        // cerró), no se bloquea la búsqueda con un error: se manda a la
+        // misma pantalla en modo solo-lectura (detalle()/la vista ya lo
+        // maneja vía $soloLectura) — antes el Operador tecleaba el folio y
+        // solo recibía un mensaje de error sin poder ver nada.
         return redirect()->route('produccion.detalle', $orden);
     }
 
@@ -86,7 +85,9 @@ class ProduccionController extends Controller
         $danos = $request->input('dano', []);
         $comentarios = $request->input('comentario_dano', []);
 
-        DB::transaction(function () use ($orden, $salidas, $danos, $comentarios, $request) {
+        $subnota = DB::transaction(function () use ($orden, $salidas, $danos, $comentarios, $request) {
+            $subnotaFaltantes = null;
+
             foreach ($orden->detalle as $linea) {
                 if (! array_key_exists($linea->id_detalle, $salidas)) {
                     continue;
@@ -120,6 +121,20 @@ class ProduccionController extends Controller
                         'comentario' => trim(($tipoDano ?? '').($comentario ? " — {$comentario}" : '')) ?: null,
                     ]);
                 }
+
+                // Un faltante (a diferencia de Roto/Quemado/Mancha, donde la
+                // prenda ya se explicó como consumida/dañada) sigue siendo
+                // mercancía que puede aparecer después — se ampara en una
+                // subnota nueva, igual que una entrega parcial (CU-04), para
+                // poder identificarla y darle seguimiento con su propio folio.
+                if ($faltante && $tipoDano === 'Faltante') {
+                    $cantidadFaltante = (int) $linea->cantidad_entrada - $cantidadSalida;
+                    $subnotaFaltantes ??= $orden->crearSubnota();
+                    $subnotaFaltantes->detalle()->create([
+                        'id_servicio' => $linea->id_servicio,
+                        'cantidad_entrada' => $cantidadFaltante,
+                    ]);
+                }
             }
 
             // RF-08: PROCESO -> LISTO. No retrocede folios que ya avanzaron
@@ -129,9 +144,15 @@ class ProduccionController extends Controller
                     ? 'LISTO'
                     : $orden->estatus_orden,
             ]);
+
+            return $subnotaFaltantes;
         });
 
-        return redirect()->route('produccion.buscar')
-            ->with('status', "Folio VC-".str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT)." marcado como LISTO para entrega.");
+        $mensaje = "Folio {$orden->folio_display} marcado como LISTO para entrega.";
+        if ($subnota) {
+            $mensaje .= " Se generó el subfolio {$subnota->folio_display} para identificar la mercancía faltante.";
+        }
+
+        return redirect()->route('produccion.buscar')->with('status', $mensaje);
     }
 }

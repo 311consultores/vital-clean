@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Nota VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }}</title>
+    <title>Nota {{ $orden->folio_display }}</title>
     <style>
         body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #1f2937; }
         .encabezado { width: 100%; margin-bottom: 4px; }
@@ -34,22 +34,33 @@
     <div style="clear:both;"></div>
 
     <div class="datos">
-        <p><strong>Folio:</strong> VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}</p>
+        <p><strong>Folio:</strong> {{ $orden->folio_display }}</p>
         <p><strong>Cliente:</strong> {{ $orden->cliente->nombre_comercial }}</p>
         <p><strong>Estatus:</strong> {{ $orden->estatus_orden }}</p>
-        <p><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->format('d/m/Y') }}</p>
+        <p><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->horaLocal()->format('d/m/Y') }}</p>
         @if ($orden->fecha_entrega_prog)
             <p><strong>Entrega comprometida:</strong> {{ $orden->fecha_entrega_prog->format('d/m/Y') }}</p>
         @endif
     </div>
+
+    @if ($orden->padre)
+        <p style="background:#f3f4f6; padding:6px 8px; border-radius:4px; font-size:10px; color:#374151;">
+            Esta nota ampara mercancía derivada de una entrega parcial del folio
+            <strong>{{ $orden->padre->folio_display }}</strong> del {{ $orden->padre->fecha_recoleccion->horaLocal()->format('d/m/Y') }}.
+        </p>
+    @endif
+    @if ($orden->subnotas->isNotEmpty())
+        <p style="background:#f3f4f6; padding:6px 8px; border-radius:4px; font-size:10px; color:#374151;">
+            Mercancía pendiente de esta nota, amparada en:
+            {{ $orden->subnotas->map(fn ($s) => $s->folio_display)->implode(', ') }}.
+        </p>
+    @endif
 
     <table>
         <thead>
             <tr>
                 <th>Prenda</th>
                 <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
             </tr>
         </thead>
         <tbody>
@@ -57,21 +68,34 @@
                 <tr>
                     <td>{{ $linea->servicio->descripcion }}</td>
                     <td>{{ $linea->cantidad_salida ?? $linea->cantidad_entrada }}</td>
-                    <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
-                    <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : 'Pendiente' }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    @php $total = $orden->detalle->sum('subtotal'); @endphp
-    <p class="total">
-        <strong>
-            Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($total, 2) : 'Pendiente de conteo' }}
-        </strong>
-    </p>
+    @php $totalPiezas = $orden->detalle->sum(fn ($l) => $l->cantidad_salida ?? $l->cantidad_entrada); @endphp
+    <p class="total"><strong>Total de piezas: {{ $totalPiezas }}</strong></p>
 
-    <footer>Generado el {{ now()->format('d/m/Y H:i') }} — Lavandería Vital Clean.</footer>
+    @php $incidencias = $orden->detalle->pluck('incidencias')->flatten(); @endphp
+    @if ($incidencias->isNotEmpty())
+        <table style="margin-top:18px;">
+            <thead>
+                <tr><th colspan="2">Incidencias Reportadas</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($orden->detalle as $linea)
+                    @foreach ($linea->incidencias as $incidencia)
+                        <tr>
+                            <td style="width:40%;">{{ $linea->servicio->descripcion }}</td>
+                            <td>{{ $incidencia->comentario ?? 'Sin descripción' }}</td>
+                        </tr>
+                    @endforeach
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    <footer>Generado el {{ now()->horaLocal()->format('d/m/Y H:i') }} — Lavandería Vital Clean.</footer>
 </body>
 </html>
 

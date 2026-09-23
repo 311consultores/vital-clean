@@ -103,15 +103,81 @@ class ProduccionTest extends TestCase
         $this->assertStringContainsString('Roto', $detalle->incidencias()->first()->comentario);
     }
 
-    public function test_operador_no_puede_reprocesar_folio_ya_listo(): void
+    public function test_faltante_genera_subfolio_automatico(): void
     {
+        // #9: a diferencia de un motivo explícito (Roto/Quemado/Mancha,
+        // donde la prenda ya se explicó como consumida/dañada), un
+        // faltante real debe poder seguir buscándose después — se ampara
+        // en una subnota nueva con solo la cantidad faltante.
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle, 'servicio' => $servicio] = $this->crearFolioEnProceso(5);
+
+        $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 3],
+        ]);
+
+        $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+
+        $this->assertNotNull($subnota, 'Debe crearse un subfolio automático por el faltante.');
+        $this->assertSame('RUTA', $subnota->estatus_orden);
+        $this->assertSame('SUB-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).'-1', $subnota->folio_display);
+
+        $lineaSubnota = $subnota->detalle()->first();
+        $this->assertNotNull($lineaSubnota);
+        $this->assertSame($servicio->id_servicio, $lineaSubnota->id_servicio);
+        $this->assertSame(2, $lineaSubnota->cantidad_entrada); // 5 - 3
+    }
+
+    public function test_motivo_explicito_distinto_de_faltante_no_genera_subfolio(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioEnProceso(5);
+
+        $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 3],
+            'dano' => [$detalle->id_detalle => 'Roto'],
+            'comentario_dano' => [$detalle->id_detalle => 'se rompió en la secadora'],
+        ]);
+
+        $this->assertDatabaseMissing('ope_notas_remision', ['folio_padre' => $orden->folio_sistema]);
+    }
+
+    public function test_reportar_incidencia_con_foto_de_camara_moderna_no_falla(): void
+    {
+        // #9: fotos directo de la cámara del celular pueden pesar varios MB;
+        // el límite viejo (4096 KB) las rechazaba antes de llegar al storage.
+        Storage::fake('incidencias');
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioEnProceso(5);
+
+        $foto = UploadedFile::fake()->image('dano.jpg')->size(6000); // 6MB
+
+        $response = $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 5],
+            'dano' => [$detalle->id_detalle => 'Mancha'],
+            'comentario_dano' => [$detalle->id_detalle => 'mancha de vino'],
+            'foto' => [$detalle->id_detalle => $foto],
+        ]);
+
+        $response->assertSessionDoesntHaveErrors('foto.'.$detalle->id_detalle);
+        $incidencia = $detalle->incidencias()->first();
+        $this->assertNotNull($incidencia->foto_evidencia);
+        Storage::disk('incidencias')->assertExists($incidencia->foto_evidencia);
+    }
+
+    public function test_folio_ya_listo_lleva_al_operador_a_verlo_solo_lectura(): void
+    {
+        // Antes esto regresaba un error genérico y no dejaba ver nada; ahora
+        // se manda a la misma pantalla en modo solo-lectura.
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
         ['orden' => $orden] = $this->crearFolioEnProceso();
         $orden->update(['estatus_orden' => 'LISTO']);
 
         $response = $this->actingAs($operador)->post(route('produccion.iniciar'), ['folio' => '02149']);
 
-        $response->assertSessionHas('error');
+        $response->assertRedirect(route('produccion.detalle', $orden));
+        $this->actingAs($operador)->get(route('produccion.detalle', $orden))
+            ->assertSee('Este folio ya no está en Proceso');
     }
 
     public function test_admin_puede_reabrir_folio_ya_listo(): void

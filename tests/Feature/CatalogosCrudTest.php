@@ -31,6 +31,31 @@ class CatalogosCrudTest extends TestCase
         $this->assertDatabaseHas('cat_clientes', ['nombre_comercial' => 'Hotel Test', 'estatus_credito' => 1]);
     }
 
+    public function test_admin_can_clone_tarifario_al_crear_cliente(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $origen = Cliente::factory()->create();
+        $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create([
+            'id_cliente' => $origen->id_cliente,
+            'id_servicio' => $servicio->id_servicio,
+            'precio_pactado' => 12.50,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('operaciones.clientes.store'), [
+            'nombre_comercial' => 'Hotel Clonado',
+            'clonar_tarifario_de' => $origen->id_cliente,
+        ]);
+
+        $response->assertRedirect(route('operaciones.clientes.index'));
+        $nuevo = Cliente::where('nombre_comercial', 'Hotel Clonado')->firstOrFail();
+        $this->assertDatabaseHas('rel_tarifas_cliente', [
+            'id_cliente' => $nuevo->id_cliente,
+            'id_servicio' => $servicio->id_servicio,
+            'precio_pactado' => 12.50,
+        ]);
+    }
+
     public function test_rfc_must_be_unique(): void
     {
         $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
@@ -65,6 +90,34 @@ class CatalogosCrudTest extends TestCase
 
         $response->assertRedirect(route('operaciones.servicios.index'));
         $this->assertDatabaseHas('cat_servicios', ['descripcion' => 'Cobija Extra']);
+    }
+
+    public function test_admin_can_marcar_servicio_como_requiere_color(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+
+        $this->actingAs($admin)->post(route('operaciones.servicios.store'), [
+            'descripcion' => 'Sábana Clasificable',
+            'unidad' => 'PZA',
+            'requiere_color' => '1',
+        ]);
+
+        $this->assertDatabaseHas('cat_servicios', ['descripcion' => 'Sábana Clasificable', 'requiere_color' => true]);
+    }
+
+    public function test_desmarcar_requiere_color_al_editar_si_se_guarda(): void
+    {
+        // Bug clásico de checkboxes: si no se manda el campo al desmarcar,
+        // un update() con esa clave ausente deja el valor viejo pegado.
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $servicio = Servicio::factory()->create(['requiere_color' => true]);
+
+        $this->actingAs($admin)->put(route('operaciones.servicios.update', $servicio), [
+            'descripcion' => $servicio->descripcion,
+            'unidad' => $servicio->unidad,
+        ]);
+
+        $this->assertDatabaseHas('cat_servicios', ['id_servicio' => $servicio->id_servicio, 'requiere_color' => false]);
     }
 
     public function test_servicio_descripcion_must_be_unique(): void

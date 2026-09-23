@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
-use App\Models\DetalleRemision;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
 use App\Models\TarifaCliente;
@@ -194,6 +193,29 @@ class AuditoriaPlantaTest extends TestCase
         Storage::disk('incidencias')->assertExists($incidencia->foto_evidencia);
     }
 
+    public function test_reportar_incidencia_con_foto_de_camara_moderna_no_falla(): void
+    {
+        // #9: fotos directo de la cámara del celular pueden pesar varios MB;
+        // el límite viejo (4096 KB) las rechazaba antes de llegar al storage.
+        Storage::fake('incidencias');
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioEnRuta(5);
+
+        $foto = UploadedFile::fake()->image('dano.jpg')->size(6000); // 6MB
+
+        $response = $this->actingAs($operador)->post(route('planta.guardar', $orden), [
+            'cantidades' => [$detalle->id_detalle => 5],
+            'dano' => [$detalle->id_detalle => 'Mancha'],
+            'comentario_dano' => [$detalle->id_detalle => 'mancha de vino'],
+            'foto' => [$detalle->id_detalle => $foto],
+        ]);
+
+        $response->assertSessionDoesntHaveErrors('foto.'.$detalle->id_detalle);
+        $incidencia = $detalle->incidencias()->first();
+        $this->assertNotNull($incidencia->foto_evidencia);
+        Storage::disk('incidencias')->assertExists($incidencia->foto_evidencia);
+    }
+
     public function test_vendedor_cannot_access_planta(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
@@ -203,14 +225,19 @@ class AuditoriaPlantaTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_ya_procesado_no_permite_reauditar_a_operador(): void
+    public function test_folio_ya_procesado_lleva_al_operador_a_verlo_solo_lectura(): void
     {
+        // Antes esto regresaba un error genérico y no dejaba ver nada; ahora
+        // se manda a la misma pantalla en modo solo-lectura (menos confuso
+        // que un callejón sin salida al teclear un folio ya auditado).
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
         ['orden' => $orden] = $this->crearFolioEnRuta();
-        $orden->update(['estatus_orden' => 'LISTO']);
+        $orden->update(['estatus_orden' => 'LISTO', 'conteo_bloqueado' => true]);
 
         $response = $this->actingAs($operador)->post(route('planta.iniciar'), ['folio' => '02149']);
 
-        $response->assertSessionHas('error');
+        $response->assertRedirect(route('planta.conteo', $orden));
+        $this->actingAs($operador)->get(route('planta.conteo', $orden))
+            ->assertSee('Este conteo ya fue guardado y bloqueado');
     }
 }

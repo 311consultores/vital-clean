@@ -15,6 +15,8 @@ class NotaRemision extends Model
 
     protected $fillable = [
         'folio_fisico',
+        'folio_padre',
+        'secuencia_subnota',
         'id_cliente',
         'id_vendedor',
         'fecha_recoleccion',
@@ -50,9 +52,97 @@ class NotaRemision extends Model
         return $this->hasMany(DetalleRemision::class, 'folio_sistema', 'folio_sistema');
     }
 
+    /**
+     * Folio original del que se desprendió esta subnota (entrega parcial,
+     * CU-04) — null si este folio nunca fue una subnota.
+     */
+    public function padre()
+    {
+        return $this->belongsTo(self::class, 'folio_padre', 'folio_sistema');
+    }
+
+    /**
+     * Subnotas generadas a partir de este folio por entregas parciales
+     * sucesivas (una o varias, si la mercancía se entrega en más de dos
+     * partes).
+     */
+    public function subnotas()
+    {
+        return $this->hasMany(self::class, 'folio_padre', 'folio_sistema');
+    }
+
     public function getRouteKeyName(): string
     {
         return 'folio_sistema';
+    }
+
+    /**
+     * Crea una subnota encadenada a este folio (folio_padre/secuencia_subnota)
+     * — usado tanto por la entrega parcial (CU-04, Entrega\EntregaController)
+     * como por el subfolio automático de faltantes al cerrar Producción
+     * (CU-03, Produccion\ProduccionController). El folio se autogenera
+     * (VC-/SUB-) igual que el levantamiento original: no se captura a mano.
+     */
+    public function crearSubnota(array $atributos = []): self
+    {
+        $secuencia = $this->subnotas()->count() + 1;
+
+        $subnota = self::create(array_merge([
+            'folio_fisico' => 'PENDIENTE',
+            'folio_padre' => $this->folio_sistema,
+            'secuencia_subnota' => $secuencia,
+            'id_cliente' => $this->id_cliente,
+            'id_vendedor' => $this->id_vendedor,
+            'fecha_recoleccion' => now(),
+            'fecha_entrega_prog' => $this->fecha_entrega_prog,
+            'estatus_orden' => 'RUTA',
+        ], $atributos));
+
+        $subnota->setRelation('padre', $this);
+        $subnota->update(['folio_fisico' => $subnota->folio_display]);
+
+        return $subnota;
+    }
+
+    /**
+     * #11: pedidos raíz recolectados después de $desde — usado tanto por el
+     * aviso del dashboard como por la campanita del encabezado (ver
+     * AppServiceProvider), para que ambos cuenten exactamente lo mismo.
+     */
+    public static function contarNuevosDesde($desde): int
+    {
+        if (! $desde) {
+            return 0;
+        }
+
+        return static::whereNull('folio_padre')->where('created_at', '>', $desde)->count();
+    }
+
+    /**
+     * Folio visible: el sistema lo autogenera, ya no se captura a mano
+     * (antes RN-05 exigía el folio de papel). Un folio raíz se ve
+     * "VC-0002"; una subnota reutiliza el número del folio raíz con
+     * prefijo "SUB-" y la cadena de posiciones desde la raíz hasta este
+     * nodo — "SUB-0002-1" (primera subnota de VC-0002), "SUB-0002-1-1"
+     * (subnota de esa subnota), etc. — para que nunca haya ambigüedad
+     * aunque un folio se entregue en varias partes o una subnota se
+     * vuelva a entregar parcialmente.
+     */
+    public function getFolioDisplayAttribute(): string
+    {
+        if ($this->folio_padre === null) {
+            return 'VC-'.str_pad((string) $this->folio_sistema, 4, '0', STR_PAD_LEFT);
+        }
+
+        $cadena = [];
+        $nodo = $this;
+
+        while ($nodo->folio_padre !== null) {
+            $cadena[] = $nodo->secuencia_subnota;
+            $nodo = $nodo->relationLoaded('padre') ? $nodo->padre : $nodo->padre()->first();
+        }
+
+        return 'SUB-'.str_pad((string) $nodo->folio_sistema, 4, '0', STR_PAD_LEFT).'-'.implode('-', array_reverse($cadena));
     }
 
     /**

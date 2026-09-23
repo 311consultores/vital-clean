@@ -14,14 +14,17 @@ use Illuminate\Http\Response;
  * (middleware 'signed'): el cliente externo no tiene cuenta en el sistema,
  * así que no puede autenticarse, pero tampoco queremos que cualquiera
  * adivine folios consecutivos y descargue notas ajenas.
+ *
+ * El PDF nunca muestra precios (para ningún rol): el precio se informa al
+ * cliente por su factura, no por esta nota de remisión.
  */
 class NotaPdfController extends Controller
 {
     public function show(NotaRemision $orden): Response
     {
-        $orden->load('cliente', 'detalle.servicio');
+        $orden->load('cliente', 'detalle.servicio', 'detalle.incidencias', 'padre', 'subnotas');
 
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'Helvetica');
 
@@ -30,7 +33,7 @@ class NotaPdfController extends Controller
         $dompdf->setPaper('letter', 'portrait');
         $dompdf->render();
 
-        $nombreArchivo = 'nota-VC-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).'.pdf';
+        $nombreArchivo = 'nota-'.$orden->folio_display.'.pdf';
 
         return new Response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',

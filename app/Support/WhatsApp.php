@@ -55,7 +55,6 @@ class WhatsApp
 
     protected static function mensajeRecoleccion(NotaRemision $nota): string
     {
-        $folio = 'VC-'.str_pad((string) $nota->folio_sistema, 4, '0', STR_PAD_LEFT);
         $pdfUrl = self::linkPdf($nota);
 
         $lineas = $nota->detalle->map(
@@ -64,7 +63,7 @@ class WhatsApp
 
         return "Hola, le confirmamos la *recolección* de su pedido en Lavandería Vital Clean.\n\n"
             ."Cliente: {$nota->cliente->nombre_comercial}\n"
-            ."Folio: {$folio} / {$nota->folio_fisico}\n"
+            ."Folio: {$nota->folio_display}\n"
             ."Fecha: {$nota->fecha_recoleccion->format('d/m/Y')}\n\n"
             ."Prendas recolectadas:\n{$lineas}\n\n"
             ."📄 Nota en PDF: {$pdfUrl}\n\n"
@@ -73,7 +72,6 @@ class WhatsApp
 
     protected static function mensajeEntrega(NotaRemision $nota): string
     {
-        $folio = 'VC-'.str_pad((string) $nota->folio_sistema, 4, '0', STR_PAD_LEFT);
         $pdfUrl = self::linkPdf($nota);
 
         $lineas = $nota->detalle->map(
@@ -86,7 +84,7 @@ class WhatsApp
 
         return "Hola, le confirmamos la *entrega* de su pedido de Lavandería Vital Clean.\n\n"
             ."Cliente: {$nota->cliente->nombre_comercial}\n"
-            ."Folio: {$folio} / {$nota->folio_fisico}\n\n"
+            ."Folio: {$nota->folio_display}\n\n"
             ."Prendas entregadas:\n{$lineas}\n\n"
             ."Total: {$total}\n\n"
             ."📄 Nota en PDF: {$pdfUrl}\n\n"

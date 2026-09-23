@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Cliente;
 use App\Models\NotaRemision;
+use App\Models\Servicio;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -90,6 +91,112 @@ class DashboardTest extends TestCase
         $this->assertSame('baja', $orden->prioridad);
     }
 
+    public function test_pestana_en_proceso_no_muestra_entregados_ni_cancelados(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $enProceso = $this->crearOrden('LISTO');
+        $entregado = $this->crearOrden('ENTREGADO');
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertViewHas('ordenes', function ($ordenes) use ($enProceso, $entregado) {
+            $folios = $ordenes->pluck('folio_sistema');
+
+            return $folios->contains($enProceso->folio_sistema) && ! $folios->contains($entregado->folio_sistema);
+        });
+    }
+
+    public function test_pestana_finalizadas_solo_muestra_entregados_y_cancelados(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $enProceso = $this->crearOrden('RUTA');
+        $entregado = $this->crearOrden('ENTREGADO');
+        $cancelado = $this->crearOrden('CANCELADO');
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard', ['vista' => 'finalizadas']));
+
+        $response->assertViewHas('ordenes', function ($ordenes) use ($enProceso, $entregado, $cancelado) {
+            $folios = $ordenes->pluck('folio_sistema');
+
+            return ! $folios->contains($enProceso->folio_sistema)
+                && $folios->contains($entregado->folio_sistema)
+                && $folios->contains($cancelado->folio_sistema);
+        });
+    }
+
+    public function test_kpi_pendiente_por_cobrar_solo_suma_pedidos_no_cancelados(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $activo = $this->crearOrden('LISTO');
+        $activo->detalle()->create(['id_servicio' => Servicio::factory()->create()->id_servicio, 'cantidad_entrada' => 2, 'subtotal' => 100]);
+        $cancelado = $this->crearOrden('CANCELADO');
+        $cancelado->detalle()->create(['id_servicio' => Servicio::factory()->create()->id_servicio, 'cantidad_entrada' => 2, 'subtotal' => 999]);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertViewHas('kpis', fn ($kpis) => (float) $kpis['pendiente_cobrar'] === 100.0);
+    }
+
+    public function test_operador_no_ve_precios_ni_cobranza_en_el_dashboard(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        $orden = $this->crearOrden('RUTA');
+        $orden->detalle()->create(['id_servicio' => Servicio::factory()->create()->id_servicio, 'cantidad_entrada' => 2, 'subtotal' => 100]);
+
+        $response = $this->actingAs($operador)->get(route('operaciones.dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Total ($)', false);
+        $response->assertDontSee('Pendiente por Cobrar');
+    }
+
+    public function test_detalle_de_orden_desglosa_subtotal_de_desmanche_para_admin(): void
+    {
+        // #12: Desmanche es un servicio adicional sobre una prenda, no una
+        // prenda en sí — se sub-totaliza aparte del resto para el ADMIN.
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $orden = $this->crearOrden('PROCESO');
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 2,
+            'precio_aplicado' => 10,
+            'subtotal' => 20,
+            'es_desmanche' => false,
+        ]);
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 1,
+            'precio_aplicado' => 15,
+            'subtotal' => 15,
+            'es_desmanche' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.ordenes.show', $orden));
+
+        $response->assertOk();
+        $response->assertSee('Subtotal Lavandería: $20.00', false);
+        $response->assertSee('Subtotal Desmanche: $15.00', false);
+        $response->assertSee('Total: $35.00', false);
+    }
+
+    public function test_operador_no_ve_precios_en_detalle_de_orden(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        $orden = $this->crearOrden('PROCESO');
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 2,
+            'precio_aplicado' => 15,
+            'subtotal' => 30,
+        ]);
+
+        $response = $this->actingAs($operador)->get(route('operaciones.ordenes.show', $orden));
+
+        $response->assertOk();
+        $response->assertDontSee('Precio Aplicado');
+        $response->assertDontSee('$30.00');
+    }
+
     public function test_dashboard_search_filters_by_folio_or_cliente(): void
     {
         $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
@@ -141,5 +248,62 @@ class DashboardTest extends TestCase
         $response->assertOk();
         $response->assertSee('<div class="timeline-cancelado">', false);
         $response->assertDontSee('class="timeline-step', false);
+    }
+
+    public function test_campanita_del_encabezado_muestra_pedidos_nuevos_en_cualquier_pantalla(): void
+    {
+        // #11: la campanita usa la misma sesión 'dashboard_ultima_visita'
+        // que el aviso del dashboard, pero debe verse en cualquier pantalla
+        // de Admin/Operador, no solo en el dashboard. Se busca el HTML del
+        // badge (no solo el nombre de la clase, que también aparece en el
+        // <style> del layout) y se avanza el reloj para no depender de la
+        // precisión de segundo de los timestamps en la comparación ">".
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard')); // marca "visto" en t0
+
+        $this->travel(2)->seconds();
+        $this->crearOrden('RUTA'); // pedido nuevo después de t0
+
+        $response = $this->actingAs($admin)->get(route('planta.buscar'));
+
+        $response->assertOk();
+        $response->assertSee('class="header-bell-badge">1</span>', false);
+    }
+
+    public function test_campanita_no_aparece_sin_pedidos_nuevos(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response = $this->actingAs($admin)->get(route('planta.buscar'));
+
+        $response->assertOk();
+        $response->assertDontSee('class="header-bell-badge"', false);
+    }
+
+    public function test_visitar_el_dashboard_limpia_la_campanita(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $this->travel(2)->seconds();
+        $this->crearOrden('RUTA');
+
+        // Re-visitar el dashboard "marca como visto" de nuevo.
+        $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response = $this->actingAs($admin)->get(route('planta.buscar'));
+
+        $response->assertDontSee('class="header-bell-badge"', false);
+    }
+
+    public function test_vendedor_no_ve_la_campanita_de_pedidos_nuevos(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+
+        $response = $this->actingAs($vendedor)->get(route('vendedor.home'));
+
+        $response->assertOk();
+        $response->assertDontSee('class="header-bell"', false);
     }
 }
