@@ -103,6 +103,45 @@ class ProduccionTest extends TestCase
         $this->assertStringContainsString('Roto', $detalle->incidencias()->first()->comentario);
     }
 
+    public function test_faltante_genera_subfolio_automatico(): void
+    {
+        // #9: a diferencia de un motivo explícito (Roto/Quemado/Mancha,
+        // donde la prenda ya se explicó como consumida/dañada), un
+        // faltante real debe poder seguir buscándose después — se ampara
+        // en una subnota nueva con solo la cantidad faltante.
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle, 'servicio' => $servicio] = $this->crearFolioEnProceso(5);
+
+        $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 3],
+        ]);
+
+        $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+
+        $this->assertNotNull($subnota, 'Debe crearse un subfolio automático por el faltante.');
+        $this->assertSame('RUTA', $subnota->estatus_orden);
+        $this->assertSame('SUB-'.str_pad((string) $orden->folio_sistema, 4, '0', STR_PAD_LEFT).'-1', $subnota->folio_display);
+
+        $lineaSubnota = $subnota->detalle()->first();
+        $this->assertNotNull($lineaSubnota);
+        $this->assertSame($servicio->id_servicio, $lineaSubnota->id_servicio);
+        $this->assertSame(2, $lineaSubnota->cantidad_entrada); // 5 - 3
+    }
+
+    public function test_motivo_explicito_distinto_de_faltante_no_genera_subfolio(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioEnProceso(5);
+
+        $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 3],
+            'dano' => [$detalle->id_detalle => 'Roto'],
+            'comentario_dano' => [$detalle->id_detalle => 'se rompió en la secadora'],
+        ]);
+
+        $this->assertDatabaseMissing('ope_notas_remision', ['folio_padre' => $orden->folio_sistema]);
+    }
+
     public function test_reportar_incidencia_con_foto_de_camara_moderna_no_falla(): void
     {
         // #9: fotos directo de la cámara del celular pueden pesar varios MB;

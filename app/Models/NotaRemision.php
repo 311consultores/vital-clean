@@ -77,6 +77,34 @@ class NotaRemision extends Model
     }
 
     /**
+     * Crea una subnota encadenada a este folio (folio_padre/secuencia_subnota)
+     * — usado tanto por la entrega parcial (CU-04, Entrega\EntregaController)
+     * como por el subfolio automático de faltantes al cerrar Producción
+     * (CU-03, Produccion\ProduccionController). El folio se autogenera
+     * (VC-/SUB-) igual que el levantamiento original: no se captura a mano.
+     */
+    public function crearSubnota(array $atributos = []): self
+    {
+        $secuencia = $this->subnotas()->count() + 1;
+
+        $subnota = self::create(array_merge([
+            'folio_fisico' => 'PENDIENTE',
+            'folio_padre' => $this->folio_sistema,
+            'secuencia_subnota' => $secuencia,
+            'id_cliente' => $this->id_cliente,
+            'id_vendedor' => $this->id_vendedor,
+            'fecha_recoleccion' => now(),
+            'fecha_entrega_prog' => $this->fecha_entrega_prog,
+            'estatus_orden' => 'RUTA',
+        ], $atributos));
+
+        $subnota->setRelation('padre', $this);
+        $subnota->update(['folio_fisico' => $subnota->folio_display]);
+
+        return $subnota;
+    }
+
+    /**
      * #11: pedidos raíz recolectados después de $desde — usado tanto por el
      * aviso del dashboard como por la campanita del encabezado (ver
      * AppServiceProvider), para que ambos cuenten exactamente lo mismo.

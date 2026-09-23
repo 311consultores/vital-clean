@@ -45,7 +45,8 @@
 
     @if ($orden->padre)
         <p style="background:#f3f4f6; padding:6px 8px; border-radius:4px; font-size:10px; color:#374151;">
-            Esta nota ampara mercancía derivada de una entrega parcial del folio <strong>{{ $orden->padre->folio_display }}</strong>.
+            Esta nota ampara mercancía derivada de una entrega parcial del folio
+            <strong>{{ $orden->padre->folio_display }}</strong> del {{ $orden->padre->fecha_recoleccion->horaLocal()->format('d/m/Y') }}.
         </p>
     @endif
     @if ($orden->subnotas->isNotEmpty())

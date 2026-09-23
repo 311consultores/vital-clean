@@ -140,26 +140,7 @@ class EntregaController extends Controller
             $subnota = null;
 
             if ($esParcial) {
-                // Posición de esta subnota entre las subnotas inmediatas de
-                // $orden (1, 2, 3...) — sirve para armar el folio visible
-                // (SUB-000X-N) sin depender de que el usuario capture nada.
-                $secuencia = $orden->subnotas()->count() + 1;
-
-                // folio_fisico es NOT NULL y el folio visible depende del
-                // propio folio_sistema (autoincrement): se crea con un valor
-                // temporal y se reemplaza de inmediato por el autogenerado.
-                $subnota = NotaRemision::create([
-                    'folio_fisico' => 'PENDIENTE',
-                    'folio_padre' => $orden->folio_sistema,
-                    'secuencia_subnota' => $secuencia,
-                    'id_cliente' => $orden->id_cliente,
-                    'id_vendedor' => $orden->id_vendedor,
-                    'fecha_recoleccion' => now(),
-                    'fecha_entrega_prog' => $orden->fecha_entrega_prog,
-                    'estatus_orden' => 'RUTA',
-                ]);
-                $subnota->setRelation('padre', $orden);
-                $subnota->update(['folio_fisico' => $subnota->folio_display]);
+                $subnota = $orden->crearSubnota();
             }
 
             foreach ($reparto as $r) {

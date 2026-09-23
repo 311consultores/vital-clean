@@ -42,6 +42,7 @@
             <p style="font-size:.85rem; color:#6b7280;">
                 Subnota del folio
                 <a href="{{ route('operaciones.ordenes.show', $orden->padre) }}">{{ $orden->padre->folio_display }}</a>
+                del {{ $orden->padre->fecha_recoleccion->horaLocal()->format('d/m/Y') }}
                 (mercancía pendiente de una entrega parcial anterior).
             </p>
         @endif

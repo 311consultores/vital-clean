@@ -186,6 +186,26 @@ class EntregaTest extends TestCase
         $this->assertNull($lineaSubnota->precio_aplicado, 'El precio se congela hasta que Planta vuelva a auditar la subnota.');
     }
 
+    public function test_detalle_de_la_subnota_muestra_folio_y_fecha_de_la_nota_origen(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioListo();
+
+        $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+            'entregado' => [$detalle->id_detalle => 3],
+        ]);
+
+        $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+
+        $response = $this->actingAs($admin)->get(route('operaciones.ordenes.show', $subnota));
+
+        $response->assertOk();
+        $response->assertSee($orden->folio_display);
+        $response->assertSee($orden->fecha_recoleccion->horaLocal()->format('d/m/Y'));
+    }
+
     public function test_segunda_entrega_parcial_del_mismo_folio_incrementa_la_secuencia(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);

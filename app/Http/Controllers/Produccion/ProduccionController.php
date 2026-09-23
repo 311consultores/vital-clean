@@ -85,7 +85,9 @@ class ProduccionController extends Controller
         $danos = $request->input('dano', []);
         $comentarios = $request->input('comentario_dano', []);
 
-        DB::transaction(function () use ($orden, $salidas, $danos, $comentarios, $request) {
+        $subnota = DB::transaction(function () use ($orden, $salidas, $danos, $comentarios, $request) {
+            $subnotaFaltantes = null;
+
             foreach ($orden->detalle as $linea) {
                 if (! array_key_exists($linea->id_detalle, $salidas)) {
                     continue;
@@ -119,6 +121,20 @@ class ProduccionController extends Controller
                         'comentario' => trim(($tipoDano ?? '').($comentario ? " — {$comentario}" : '')) ?: null,
                     ]);
                 }
+
+                // Un faltante (a diferencia de Roto/Quemado/Mancha, donde la
+                // prenda ya se explicó como consumida/dañada) sigue siendo
+                // mercancía que puede aparecer después — se ampara en una
+                // subnota nueva, igual que una entrega parcial (CU-04), para
+                // poder identificarla y darle seguimiento con su propio folio.
+                if ($faltante && $tipoDano === 'Faltante') {
+                    $cantidadFaltante = (int) $linea->cantidad_entrada - $cantidadSalida;
+                    $subnotaFaltantes ??= $orden->crearSubnota();
+                    $subnotaFaltantes->detalle()->create([
+                        'id_servicio' => $linea->id_servicio,
+                        'cantidad_entrada' => $cantidadFaltante,
+                    ]);
+                }
             }
 
             // RF-08: PROCESO -> LISTO. No retrocede folios que ya avanzaron
@@ -128,9 +144,15 @@ class ProduccionController extends Controller
                     ? 'LISTO'
                     : $orden->estatus_orden,
             ]);
+
+            return $subnotaFaltantes;
         });
 
-        return redirect()->route('produccion.buscar')
-            ->with('status', "Folio {$orden->folio_display} marcado como LISTO para entrega.");
+        $mensaje = "Folio {$orden->folio_display} marcado como LISTO para entrega.";
+        if ($subnota) {
+            $mensaje .= " Se generó el subfolio {$subnota->folio_display} para identificar la mercancía faltante.";
+        }
+
+        return redirect()->route('produccion.buscar')->with('status', $mensaje);
     }
 }

@@ -23,6 +23,7 @@
     @if ($orden->padre)
         <div class="alert alert-status no-print">
             Esta es una subnota del folio {{ $orden->padre->folio_display }}
+            del {{ $orden->padre->fecha_recoleccion->horaLocal()->format('d/m/Y') }}
             (mercancía que quedó pendiente de una entrega parcial anterior).
         </div>
     @endif
