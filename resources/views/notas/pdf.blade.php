@@ -37,7 +37,7 @@
         <p><strong>Folio:</strong> {{ $orden->folio_display }}</p>
         <p><strong>Cliente:</strong> {{ $orden->cliente->nombre_comercial }}</p>
         <p><strong>Estatus:</strong> {{ $orden->estatus_orden }}</p>
-        <p><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->format('d/m/Y') }}</p>
+        <p><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->horaLocal()->format('d/m/Y') }}</p>
         @if ($orden->fecha_entrega_prog)
             <p><strong>Entrega comprometida:</strong> {{ $orden->fecha_entrega_prog->format('d/m/Y') }}</p>
         @endif
@@ -60,10 +60,6 @@
             <tr>
                 <th>Prenda</th>
                 <th>Cantidad</th>
-                @unless ($ocultarPrecios)
-                    <th>Precio</th>
-                    <th>Subtotal</th>
-                @endunless
             </tr>
         </thead>
         <tbody>
@@ -71,25 +67,34 @@
                 <tr>
                     <td>{{ $linea->servicio->descripcion }}</td>
                     <td>{{ $linea->cantidad_salida ?? $linea->cantidad_entrada }}</td>
-                    @unless ($ocultarPrecios)
-                        <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
-                        <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : 'Pendiente' }}</td>
-                    @endunless
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    @unless ($ocultarPrecios)
-        @php $total = $orden->detalle->sum('subtotal'); @endphp
-        <p class="total">
-            <strong>
-                Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($total, 2) : 'Pendiente de conteo' }}
-            </strong>
-        </p>
-    @endunless
+    @php $totalPiezas = $orden->detalle->sum(fn ($l) => $l->cantidad_salida ?? $l->cantidad_entrada); @endphp
+    <p class="total"><strong>Total de piezas: {{ $totalPiezas }}</strong></p>
 
-    <footer>Generado el {{ now()->format('d/m/Y H:i') }} — Lavandería Vital Clean.</footer>
+    @php $incidencias = $orden->detalle->pluck('incidencias')->flatten(); @endphp
+    @if ($incidencias->isNotEmpty())
+        <table style="margin-top:18px;">
+            <thead>
+                <tr><th colspan="2">Incidencias Reportadas</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($orden->detalle as $linea)
+                    @foreach ($linea->incidencias as $incidencia)
+                        <tr>
+                            <td style="width:40%;">{{ $linea->servicio->descripcion }}</td>
+                            <td>{{ $incidencia->comentario ?? 'Sin descripción' }}</td>
+                        </tr>
+                    @endforeach
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    <footer>Generado el {{ now()->horaLocal()->format('d/m/Y H:i') }} — Lavandería Vital Clean.</footer>
 </body>
 </html>
 

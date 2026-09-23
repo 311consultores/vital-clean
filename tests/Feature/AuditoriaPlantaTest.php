@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
-use App\Models\DetalleRemision;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
 use App\Models\TarifaCliente;
@@ -226,14 +225,19 @@ class AuditoriaPlantaTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_ya_procesado_no_permite_reauditar_a_operador(): void
+    public function test_folio_ya_procesado_lleva_al_operador_a_verlo_solo_lectura(): void
     {
+        // Antes esto regresaba un error genérico y no dejaba ver nada; ahora
+        // se manda a la misma pantalla en modo solo-lectura (menos confuso
+        // que un callejón sin salida al teclear un folio ya auditado).
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
         ['orden' => $orden] = $this->crearFolioEnRuta();
-        $orden->update(['estatus_orden' => 'LISTO']);
+        $orden->update(['estatus_orden' => 'LISTO', 'conteo_bloqueado' => true]);
 
         $response = $this->actingAs($operador)->post(route('planta.iniciar'), ['folio' => '02149']);
 
-        $response->assertSessionHas('error');
+        $response->assertRedirect(route('planta.conteo', $orden));
+        $this->actingAs($operador)->get(route('planta.conteo', $orden))
+            ->assertSee('Este conteo ya fue guardado y bloqueado');
     }
 }

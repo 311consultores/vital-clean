@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\NotaRemision;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +26,16 @@ class AppServiceProvider extends ServiceProvider
         // El proyecto no carga Tailwind (vista por defecto de Laravel para
         // paginación), así que se usa una vista propia en todo el sitio.
         Paginator::defaultView('vendor.pagination.vitalclean');
+
+        // La hora de generación de PDFs y otras fechas con hora (no solo
+        // día) no coincidía con la hora local: config('app.timezone') se
+        // queda en UTC a propósito (así created_at, dashboard_ultima_visita,
+        // etc. no requieren migrar datos existentes), y esta macro solo
+        // convierte para MOSTRARLE la fecha/hora al usuario en Mérida.
+        Carbon::macro('horaLocal', function () {
+            /** @var Carbon $this */
+            return $this->copy()->setTimezone(config('app.display_timezone'));
+        });
 
         // #11: campanita de notificaciones en el encabezado, visible en
         // cualquier pantalla de Admin/Operador (no solo en el dashboard).

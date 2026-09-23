@@ -52,7 +52,7 @@
             @php $colorPrioridad = ['alta' => 'var(--rojo)', 'media' => 'var(--amarillo)', 'baja' => 'var(--azul-claro)'][$orden->prioridad]; @endphp
             <span style="color:{{ $colorPrioridad }}; font-weight:600;">{{ ucfirst($orden->prioridad) }}</span>
         </p>
-        <p><strong>Fecha de Recolección:</strong> {{ $orden->fecha_recoleccion->format('d/m/Y H:i') }}</p>
+        <p><strong>Fecha de Recolección:</strong> {{ $orden->fecha_recoleccion->horaLocal()->format('d/m/Y H:i') }}</p>
         @if ($orden->fecha_entrega_prog)
             <p><strong>Entrega Comprometida:</strong> {{ $orden->fecha_entrega_prog->format('d/m/Y') }}</p>
         @endif

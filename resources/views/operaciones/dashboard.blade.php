@@ -45,7 +45,7 @@
             </thead>
             <tbody>
                 @forelse ($ordenes as $orden)
-                    <tr>
+                    <tr data-href="{{ route('operaciones.ordenes.show', $orden) }}">
                         <td>
                             @php
                                 $colorPrioridad = ['alta' => 'var(--rojo)', 'media' => 'var(--amarillo)', 'baja' => 'var(--azul-claro)'][$orden->prioridad];

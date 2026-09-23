@@ -9,7 +9,7 @@
         <p><strong>Folio:</strong> {{ $nota->folio_display }}</p>
         <p><strong>Cliente:</strong> {{ $nota->cliente->nombre_comercial }}</p>
         <p><strong>Estatus:</strong> <span class="badge badge-{{ strtolower($nota->estatus_orden) }}">{{ $nota->estatus_orden }}</span></p>
-        <p><strong>Fecha de Recolección:</strong> {{ $nota->fecha_recoleccion->format('d/m/Y H:i') }}</p>
+        <p><strong>Fecha de Recolección:</strong> {{ $nota->fecha_recoleccion->horaLocal()->format('d/m/Y H:i') }}</p>
         @if ($nota->fecha_entrega_prog)
             <p><strong>Entrega Comprometida:</strong> {{ $nota->fecha_entrega_prog->format('d/m/Y') }}</p>
         @endif

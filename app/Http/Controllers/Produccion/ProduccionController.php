@@ -57,12 +57,11 @@ class ProduccionController extends Controller
             return back()->withInput()->with('error', "No se encontró ningún folio con \"{$folio}\".");
         }
 
-        $esAdmin = $request->user()->rol === 'ADMIN';
-
-        if ($orden->estatus_orden !== self::ESTATUS_PROCESABLE && ! $esAdmin) {
-            return back()->withInput()->with('error', "El folio {$orden->folio_fisico} está en estatus {$orden->estatus_orden}; no está listo para cierre de producción o ya se cerró.");
-        }
-
+        // Si el folio no está listo para cierre de producción (o ya se
+        // cerró), no se bloquea la búsqueda con un error: se manda a la
+        // misma pantalla en modo solo-lectura (detalle()/la vista ya lo
+        // maneja vía $soloLectura) — antes el Operador tecleaba el folio y
+        // solo recibía un mensaje de error sin poder ver nada.
         return redirect()->route('produccion.detalle', $orden);
     }
 

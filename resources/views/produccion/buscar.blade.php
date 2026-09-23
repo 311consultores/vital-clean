@@ -59,7 +59,7 @@
             </thead>
             <tbody>
                 @forelse ($enProceso as $orden)
-                    <tr>
+                    <tr data-href="{{ route('produccion.detalle', $orden) }}">
                         <td>{{ $orden->folio_display }}</td>
                         <td>{{ $orden->cliente->nombre_comercial }}</td>
                         <td><span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span></td>

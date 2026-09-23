@@ -55,7 +55,7 @@
         <h2 style="font-size:1.1rem; margin-top:0;">Vital Clean — Nota de Remisión</h2>
         <p style="margin:.1rem 0;"><strong>Folio:</strong> {{ $orden->folio_display }}</p>
         <p style="margin:.1rem 0;"><strong>Cliente:</strong> {{ $orden->cliente->nombre_comercial }}</p>
-        <p style="margin:.1rem 0;"><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->format('d/m/Y') }}</p>
+        <p style="margin:.1rem 0;"><strong>Fecha de recolección:</strong> {{ $orden->fecha_recoleccion?->horaLocal()->format('d/m/Y') }}</p>
         @if ($orden->fecha_entrega_prog)
             <p style="margin:.1rem 0;"><strong>Fecha de entrega comprometida:</strong> {{ $orden->fecha_entrega_prog->format('d/m/Y') }}</p>
         @endif

@@ -15,27 +15,21 @@ use Illuminate\Http\Response;
  * así que no puede autenticarse, pero tampoco queremos que cualquiera
  * adivine folios consecutivos y descargue notas ajenas.
  *
- * El mismo enlace ($pdfUrl) también se usa como botón "Ver PDF" dentro del
- * panel del vendedor. Como la ruta no exige 'auth', un vendedor que le da
- * clic desde su sesión sí llega autenticado (misma pestaña/dominio, cookie
- * de sesión incluida) — se aprovecha eso para ocultarle precios, igual que
- * en el resto del panel; el cliente externo (sin sesión) y ADMIN los siguen
- * viendo igual que antes.
+ * El PDF nunca muestra precios (para ningún rol): el precio se informa al
+ * cliente por su factura, no por esta nota de remisión.
  */
 class NotaPdfController extends Controller
 {
     public function show(NotaRemision $orden): Response
     {
-        $orden->load('cliente', 'detalle.servicio', 'padre', 'subnotas');
+        $orden->load('cliente', 'detalle.servicio', 'detalle.incidencias', 'padre', 'subnotas');
 
-        $ocultarPrecios = auth()->check() && auth()->user()->rol === 'VENDEDOR';
-
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'Helvetica');
 
         $dompdf = new Dompdf($options);
-        $dompdf->loadHtml(view('notas.pdf', compact('orden', 'ocultarPrecios'))->render());
+        $dompdf->loadHtml(view('notas.pdf', compact('orden'))->render());
         $dompdf->setPaper('letter', 'portrait');
         $dompdf->render();
 

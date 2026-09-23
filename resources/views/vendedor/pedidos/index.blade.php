@@ -30,11 +30,11 @@
             </thead>
             <tbody>
                 @forelse ($pedidos as $pedido)
-                    <tr>
+                    <tr data-href="{{ route('vendedor.pedidos.show', $pedido) }}">
                         <td>{{ $pedido->folio_display }}</td>
                         <td>{{ $pedido->cliente->nombre_comercial }}</td>
                         <td><span class="badge badge-{{ strtolower($pedido->estatus_orden) }}">{{ $pedido->estatus_orden }}</span></td>
-                        <td>{{ $pedido->fecha_recoleccion->format('d/m/Y H:i') }}</td>
+                        <td>{{ $pedido->fecha_recoleccion->horaLocal()->format('d/m/Y H:i') }}</td>
                         <td><a class="btn btn-sm" href="{{ route('vendedor.pedidos.show', $pedido) }}">Ver</a></td>
                     </tr>
                 @empty

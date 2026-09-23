@@ -168,10 +168,13 @@
             }
 
             function buscar(termino) {
+                // Solo coincide contra el nombre de la prenda, no la
+                // categoría — antes "hotelería" mostraba todas las prendas
+                // de esa categoría en vez de acotar a lo que se escribió.
                 var q = normalizar(termino);
                 if (q.length === 0) return [];
                 return CATALOGO.filter(function (p) {
-                    return normalizar(p.descripcion).includes(q) || normalizar(p.categoria).includes(q);
+                    return normalizar(p.descripcion).includes(q);
                 }).slice(0, 10);
             }
 

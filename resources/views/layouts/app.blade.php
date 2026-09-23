@@ -187,6 +187,7 @@
         table.data-table th, table.data-table td { text-align: left; padding: .65rem .9rem; border-bottom: 1px solid #eee; font-size: .9rem; }
         table.data-table th { background: var(--azul); color: var(--blanco); font-weight: 600; }
         table.data-table tr:hover td { background: #fafafa; }
+        table.data-table tr[data-href] { cursor: pointer; }
         .page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: 1rem; }
         /* Buscadores con min-width fijo (dashboard, catálogos) — a partir
            de aquí ya no compiten en la misma fila que el título, y pueden
@@ -377,5 +378,21 @@
             @yield('content')
         </main>
     @endauth
+
+    {{--
+        En los grids (dashboard, Planta, Producción, Entrega, Mis Pedidos),
+        dar clic a cualquier parte de la fila abre el registro — no hace
+        falta apuntarle al botón "Ver". Los botones/enlaces propios de la
+        fila (Auditar, Entregar, Ver, etc.) siguen funcionando normal, sin
+        doble navegación.
+    --}}
+    <script>
+        document.addEventListener('click', function (e) {
+            var fila = e.target.closest('tr[data-href]');
+            if (!fila) return;
+            if (e.target.closest('a, button, input, select, textarea, label')) return;
+            window.location = fila.dataset.href;
+        });
+    </script>
 </body>
 </html>

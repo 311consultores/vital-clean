@@ -126,15 +126,19 @@ class ProduccionTest extends TestCase
         Storage::disk('incidencias')->assertExists($incidencia->foto_evidencia);
     }
 
-    public function test_operador_no_puede_reprocesar_folio_ya_listo(): void
+    public function test_folio_ya_listo_lleva_al_operador_a_verlo_solo_lectura(): void
     {
+        // Antes esto regresaba un error genérico y no dejaba ver nada; ahora
+        // se manda a la misma pantalla en modo solo-lectura.
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
         ['orden' => $orden] = $this->crearFolioEnProceso();
         $orden->update(['estatus_orden' => 'LISTO']);
 
         $response = $this->actingAs($operador)->post(route('produccion.iniciar'), ['folio' => '02149']);
 
-        $response->assertSessionHas('error');
+        $response->assertRedirect(route('produccion.detalle', $orden));
+        $this->actingAs($operador)->get(route('produccion.detalle', $orden))
+            ->assertSee('Este folio ya no está en Proceso');
     }
 
     public function test_admin_puede_reabrir_folio_ya_listo(): void
