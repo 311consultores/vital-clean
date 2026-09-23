@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Cliente;
 use App\Models\NotaRemision;
+use App\Models\Servicio;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -88,6 +89,83 @@ class DashboardTest extends TestCase
         $orden = $this->crearOrden('ENTREGADO', now()->subDay()->toDateString());
 
         $this->assertSame('baja', $orden->prioridad);
+    }
+
+    public function test_pestana_en_proceso_no_muestra_entregados_ni_cancelados(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $enProceso = $this->crearOrden('LISTO');
+        $entregado = $this->crearOrden('ENTREGADO');
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertViewHas('ordenes', function ($ordenes) use ($enProceso, $entregado) {
+            $folios = $ordenes->pluck('folio_sistema');
+
+            return $folios->contains($enProceso->folio_sistema) && ! $folios->contains($entregado->folio_sistema);
+        });
+    }
+
+    public function test_pestana_finalizadas_solo_muestra_entregados_y_cancelados(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $enProceso = $this->crearOrden('RUTA');
+        $entregado = $this->crearOrden('ENTREGADO');
+        $cancelado = $this->crearOrden('CANCELADO');
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard', ['vista' => 'finalizadas']));
+
+        $response->assertViewHas('ordenes', function ($ordenes) use ($enProceso, $entregado, $cancelado) {
+            $folios = $ordenes->pluck('folio_sistema');
+
+            return ! $folios->contains($enProceso->folio_sistema)
+                && $folios->contains($entregado->folio_sistema)
+                && $folios->contains($cancelado->folio_sistema);
+        });
+    }
+
+    public function test_kpi_pendiente_por_cobrar_solo_suma_pedidos_no_cancelados(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $activo = $this->crearOrden('LISTO');
+        $activo->detalle()->create(['id_servicio' => Servicio::factory()->create()->id_servicio, 'cantidad_entrada' => 2, 'subtotal' => 100]);
+        $cancelado = $this->crearOrden('CANCELADO');
+        $cancelado->detalle()->create(['id_servicio' => Servicio::factory()->create()->id_servicio, 'cantidad_entrada' => 2, 'subtotal' => 999]);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertViewHas('kpis', fn ($kpis) => (float) $kpis['pendiente_cobrar'] === 100.0);
+    }
+
+    public function test_operador_no_ve_precios_ni_cobranza_en_el_dashboard(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        $orden = $this->crearOrden('RUTA');
+        $orden->detalle()->create(['id_servicio' => Servicio::factory()->create()->id_servicio, 'cantidad_entrada' => 2, 'subtotal' => 100]);
+
+        $response = $this->actingAs($operador)->get(route('operaciones.dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Total ($)', false);
+        $response->assertDontSee('Pendiente por Cobrar');
+    }
+
+    public function test_operador_no_ve_precios_en_detalle_de_orden(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        $orden = $this->crearOrden('PROCESO');
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 2,
+            'precio_aplicado' => 15,
+            'subtotal' => 30,
+        ]);
+
+        $response = $this->actingAs($operador)->get(route('operaciones.ordenes.show', $orden));
+
+        $response->assertOk();
+        $response->assertDontSee('Precio Aplicado');
+        $response->assertDontSee('$30.00');
     }
 
     public function test_dashboard_search_filters_by_folio_or_cliente(): void

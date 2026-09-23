@@ -60,15 +60,16 @@
             <p><strong>Geolocalización:</strong> {{ $orden->geolocalizacion }}</p>
         @endif
 
-        @php $esVendedor = auth()->user()->rol === 'VENDEDOR'; @endphp
+        {{-- RN-01/RN-02: precios solo para ADMIN — ni VENDEDOR ni OPERADOR --}}
+        @php $puedeVerPrecios = auth()->user()->rol === 'ADMIN'; @endphp
 
         <table class="data-table" style="margin-top:1rem;">
             <thead>
                 <tr>
                     <th>Artículo</th><th>Entrada</th><th>Salida</th>
-                    @unless ($esVendedor)
+                    @if ($puedeVerPrecios)
                         <th>Precio Aplicado</th><th>Subtotal</th>
-                    @endunless
+                    @endif
                     <th>Incidencias</th>
                 </tr>
             </thead>
@@ -78,10 +79,10 @@
                         <td>{{ $linea->servicio->descripcion }}</td>
                         <td>{{ $linea->cantidad_entrada }}</td>
                         <td>{{ $linea->cantidad_salida ?? '—' }}</td>
-                        @unless ($esVendedor)
+                        @if ($puedeVerPrecios)
                             <td>{{ $linea->precio_aplicado !== null ? '$'.number_format($linea->precio_aplicado, 2) : 'Pendiente' }}</td>
                             <td>{{ $linea->subtotal !== null ? '$'.number_format($linea->subtotal, 2) : '—' }}</td>
-                        @endunless
+                        @endif
                         <td>
                             @if ($linea->incidencias->isNotEmpty())
                                 <span class="badge" style="background:var(--rojo);">
@@ -95,9 +96,9 @@
                 @endforeach
             </tbody>
         </table>
-        @unless ($esVendedor)
+        @if ($puedeVerPrecios)
             <p style="margin-top:.75rem;"><strong>Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($orden->detalle->sum('subtotal'), 2) : 'Pendiente de conteo en planta' }}</strong></p>
-        @endunless
+        @endif
     </div>
 
     @php $incidenciasOrden = $orden->detalle->pluck('incidencias')->flatten(); @endphp
