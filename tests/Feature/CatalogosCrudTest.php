@@ -92,6 +92,34 @@ class CatalogosCrudTest extends TestCase
         $this->assertDatabaseHas('cat_servicios', ['descripcion' => 'Cobija Extra']);
     }
 
+    public function test_admin_can_marcar_servicio_como_requiere_color(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+
+        $this->actingAs($admin)->post(route('operaciones.servicios.store'), [
+            'descripcion' => 'Sábana Clasificable',
+            'unidad' => 'PZA',
+            'requiere_color' => '1',
+        ]);
+
+        $this->assertDatabaseHas('cat_servicios', ['descripcion' => 'Sábana Clasificable', 'requiere_color' => true]);
+    }
+
+    public function test_desmarcar_requiere_color_al_editar_si_se_guarda(): void
+    {
+        // Bug clásico de checkboxes: si no se manda el campo al desmarcar,
+        // un update() con esa clave ausente deja el valor viejo pegado.
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $servicio = Servicio::factory()->create(['requiere_color' => true]);
+
+        $this->actingAs($admin)->put(route('operaciones.servicios.update', $servicio), [
+            'descripcion' => $servicio->descripcion,
+            'unidad' => $servicio->unidad,
+        ]);
+
+        $this->assertDatabaseHas('cat_servicios', ['id_servicio' => $servicio->id_servicio, 'requiere_color' => false]);
+    }
+
     public function test_servicio_descripcion_must_be_unique(): void
     {
         $admin = Usuario::factory()->create(['rol' => 'ADMIN']);

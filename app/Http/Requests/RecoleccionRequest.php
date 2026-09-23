@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Cliente;
 use App\Models\TarifaCliente;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -28,6 +29,15 @@ class RecoleccionRequest extends FormRequest
             'fecha_entrega_prog' => ['nullable', 'date', 'after_or_equal:today'],
             'cantidades' => ['required', 'array'],
             'cantidades.*' => ['nullable', 'integer', 'min:0'],
+            // #5/#11/#12: modificadores por prenda, uno por cada servicio ya
+            // presente en "cantidades" (no por línea individual — el
+            // carrito de Nuevo Pedido junta cantidades por prenda).
+            'condicion' => ['nullable', 'array'],
+            'condicion.*' => ['nullable', 'string', Rule::in(['nueva', 'usada'])],
+            'color' => ['nullable', 'array'],
+            'color.*' => ['nullable', 'string', 'max:50'],
+            'desmanche' => ['nullable', 'array'],
+            'desmanche.*' => ['nullable', 'boolean'],
         ];
     }
 

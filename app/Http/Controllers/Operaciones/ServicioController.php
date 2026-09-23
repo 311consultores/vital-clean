@@ -28,7 +28,9 @@ class ServicioController extends Controller
 
     public function store(ServicioRequest $request): RedirectResponse
     {
-        Servicio::create($request->validated());
+        // Un checkbox sin marcar no manda el campo — se castea aparte para
+        // que "desmarcar" sí se guarde como false y no se quede pegado.
+        Servicio::create($request->validated() + ['requiere_color' => $request->boolean('requiere_color')]);
 
         return redirect()->route('operaciones.servicios.index')->with('status', 'Servicio creado correctamente.');
     }
@@ -40,7 +42,7 @@ class ServicioController extends Controller
 
     public function update(ServicioRequest $request, Servicio $servicio): RedirectResponse
     {
-        $servicio->update($request->validated());
+        $servicio->update($request->validated() + ['requiere_color' => $request->boolean('requiere_color')]);
 
         return redirect()->route('operaciones.servicios.index')->with('status', 'Servicio actualizado correctamente.');
     }

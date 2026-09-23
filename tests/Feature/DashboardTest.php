@@ -150,6 +150,35 @@ class DashboardTest extends TestCase
         $response->assertDontSee('Pendiente por Cobrar');
     }
 
+    public function test_detalle_de_orden_desglosa_subtotal_de_desmanche_para_admin(): void
+    {
+        // #12: Desmanche es un servicio adicional sobre una prenda, no una
+        // prenda en sí — se sub-totaliza aparte del resto para el ADMIN.
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $orden = $this->crearOrden('PROCESO');
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 2,
+            'precio_aplicado' => 10,
+            'subtotal' => 20,
+            'es_desmanche' => false,
+        ]);
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 1,
+            'precio_aplicado' => 15,
+            'subtotal' => 15,
+            'es_desmanche' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.ordenes.show', $orden));
+
+        $response->assertOk();
+        $response->assertSee('Subtotal Lavandería: $20.00', false);
+        $response->assertSee('Subtotal Desmanche: $15.00', false);
+        $response->assertSee('Total: $35.00', false);
+    }
+
     public function test_operador_no_ve_precios_en_detalle_de_orden(): void
     {
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);

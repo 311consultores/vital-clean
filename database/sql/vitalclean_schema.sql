@@ -74,6 +74,7 @@ CREATE TABLE `cat_servicios` (
   `descripcion` varchar(100) NOT NULL,
   `unidad` enum('PZA','KG') NOT NULL,
   `categoria` varchar(50) DEFAULT NULL,
+  `requiere_color` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id_servicio`),
@@ -134,7 +135,7 @@ CREATE TABLE `ope_notas_remision` (
   CONSTRAINT `ope_notas_remision_folio_padre_foreign` FOREIGN KEY (`folio_padre`) REFERENCES `ope_notas_remision` (`folio_sistema`) ON DELETE SET NULL,
   CONSTRAINT `ope_notas_remision_id_cliente_foreign` FOREIGN KEY (`id_cliente`) REFERENCES `cat_clientes` (`id_cliente`),
   CONSTRAINT `ope_notas_remision_id_vendedor_foreign` FOREIGN KEY (`id_vendedor`) REFERENCES `sys_usuarios` (`id_usuario`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -148,6 +149,9 @@ CREATE TABLE `ope_detalle_remision` (
   `id_detalle` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `folio_sistema` bigint(20) unsigned NOT NULL,
   `id_servicio` bigint(20) unsigned NOT NULL,
+  `condicion_prenda` enum('nueva','usada') DEFAULT NULL,
+  `color` varchar(50) DEFAULT NULL,
+  `es_desmanche` tinyint(1) NOT NULL DEFAULT 0,
   `cantidad_entrada` int(11) NOT NULL DEFAULT 0,
   `cantidad_salida` int(11) DEFAULT NULL,
   `precio_aplicado` decimal(10,2) DEFAULT NULL,
@@ -160,7 +164,7 @@ CREATE TABLE `ope_detalle_remision` (
   KEY `ope_detalle_remision_id_servicio_foreign` (`id_servicio`),
   CONSTRAINT `ope_detalle_remision_folio_sistema_foreign` FOREIGN KEY (`folio_sistema`) REFERENCES `ope_notas_remision` (`folio_sistema`),
   CONSTRAINT `ope_detalle_remision_id_servicio_foreign` FOREIGN KEY (`id_servicio`) REFERENCES `cat_servicios` (`id_servicio`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -192,4 +196,4 @@ CREATE TABLE `ope_incidencias` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-15  2:17:08
+-- Dump completed on 2026-09-23  5:11:23

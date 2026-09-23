@@ -16,7 +16,18 @@
             <tbody>
                 @foreach ($items as $item)
                     <tr>
-                        <td>{{ $item['servicio']->descripcion }}</td>
+                        <td>
+                            {{ $item['servicio']->descripcion }}
+                            @if ($item['condicion_prenda'] === 'nueva')
+                                <span class="badge" style="background:var(--azul-claro);">Nueva</span>
+                            @endif
+                            @if ($item['color'])
+                                <span class="badge" style="background:#6b7280;">{{ $item['color'] }}</span>
+                            @endif
+                            @if ($item['es_desmanche'])
+                                <span class="badge" style="background:var(--amarillo);">Desmanche</span>
+                            @endif
+                        </td>
                         <td>{{ $item['cantidad'] }}</td>
                     </tr>
                 @endforeach

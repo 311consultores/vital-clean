@@ -72,6 +72,61 @@ class RecoleccionTest extends TestCase
         $this->assertNotNull($nota->firma_cliente);
     }
 
+    public function test_captura_condicion_color_y_desmanche_por_prenda(): void
+    {
+        // #5/#11/#12: nueva/usada se captura desde recolección; color solo
+        // aplica si el servicio lo requiere; desmanche es un modificador
+        // que se puede marcar sobre cualquier prenda.
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $cliente = Cliente::factory()->create(['estatus_credito' => true]);
+        $servicioConColor = Servicio::factory()->create(['requiere_color' => true]);
+        $servicioDesmanche = Servicio::factory()->create();
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicioConColor->id_servicio]);
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicioDesmanche->id_servicio]);
+
+        $this->actingAs($vendedor);
+        $this->post(route('vendedor.recoleccion.store'), [
+            'id_cliente' => $cliente->id_cliente,
+            'cantidades' => [
+                $servicioConColor->id_servicio => 3,
+                $servicioDesmanche->id_servicio => 2,
+            ],
+            'condicion' => [$servicioConColor->id_servicio => 'nueva'],
+            'color' => [$servicioConColor->id_servicio => 'Blanco'],
+            'desmanche' => [$servicioDesmanche->id_servicio => '1'],
+        ]);
+        $this->post(route('vendedor.recoleccion.confirmar'), ['firma' => $this->firmaDataUrl()]);
+
+        $nota = NotaRemision::first();
+
+        $this->assertDatabaseHas('ope_detalle_remision', [
+            'folio_sistema' => $nota->folio_sistema,
+            'id_servicio' => $servicioConColor->id_servicio,
+            'condicion_prenda' => 'nueva',
+            'color' => 'Blanco',
+            'es_desmanche' => false,
+        ]);
+        $this->assertDatabaseHas('ope_detalle_remision', [
+            'folio_sistema' => $nota->folio_sistema,
+            'id_servicio' => $servicioDesmanche->id_servicio,
+            'condicion_prenda' => null,
+            'es_desmanche' => true,
+        ]);
+    }
+
+    public function test_endpoint_de_servicios_incluye_si_requiere_color(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $cliente = Cliente::factory()->create();
+        $servicio = Servicio::factory()->create(['requiere_color' => true]);
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicio->id_servicio]);
+
+        $response = $this->actingAs($vendedor)->getJson(route('vendedor.recoleccion.servicios', $cliente));
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $servicio->id_servicio, 'requiere_color' => true]);
+    }
+
     public function test_at_least_one_prenda_with_quantity_is_required(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);

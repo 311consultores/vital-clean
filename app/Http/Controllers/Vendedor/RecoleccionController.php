@@ -54,6 +54,7 @@ class RecoleccionController extends Controller
                     'descripcion' => $s->descripcion,
                     'categoria' => $s->categoria,
                     'unidad' => $s->unidad,
+                    'requiere_color' => $s->requiere_color,
                 ])
         );
     }
@@ -76,6 +77,12 @@ class RecoleccionController extends Controller
             'id_cliente' => (int) $request->input('id_cliente'),
             'fecha_entrega_prog' => $request->input('fecha_entrega_prog'),
             'cantidades' => $cantidades->all(),
+            // #5/#11/#12: un modificador por prenda (no por unidad
+            // individual) — nueva/usada, color (si la prenda lo requiere) y
+            // si el desmanche aplica a esa prenda en este pedido.
+            'condicion' => $request->input('condicion', []),
+            'color' => $request->input('color', []),
+            'desmanche' => collect($request->input('desmanche', []))->map(fn ($v) => (bool) $v)->all(),
         ]);
 
         return redirect()->route('vendedor.recoleccion.resumen');
@@ -96,6 +103,9 @@ class RecoleccionController extends Controller
         $items = collect($pendiente['cantidades'])->map(fn ($cantidad, $idServicio) => [
             'servicio' => $servicios[$idServicio],
             'cantidad' => $cantidad,
+            'condicion_prenda' => $pendiente['condicion'][$idServicio] ?? null,
+            'color' => $pendiente['color'][$idServicio] ?? null,
+            'es_desmanche' => $pendiente['desmanche'][$idServicio] ?? false,
         ])->values();
 
         $totalPiezas = $items->sum('cantidad');
@@ -154,6 +164,9 @@ class RecoleccionController extends Controller
                 $nota->detalle()->create([
                     'id_servicio' => $idServicio,
                     'cantidad_entrada' => $cantidad,
+                    'condicion_prenda' => $pendiente['condicion'][$idServicio] ?? null,
+                    'color' => $pendiente['color'][$idServicio] ?? null,
+                    'es_desmanche' => $pendiente['desmanche'][$idServicio] ?? false,
                 ]);
             }
 

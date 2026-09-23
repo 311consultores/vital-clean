@@ -22,7 +22,15 @@ class Servicio extends Model
         'descripcion',
         'unidad',
         'categoria',
+        'requiere_color',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'requiere_color' => 'boolean',
+        ];
+    }
 
     public function tarifas()
     {

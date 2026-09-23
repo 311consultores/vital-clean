@@ -77,7 +77,18 @@
             <tbody>
                 @foreach ($orden->detalle as $linea)
                     <tr>
-                        <td>{{ $linea->servicio->descripcion }}</td>
+                        <td>
+                            {{ $linea->servicio->descripcion }}
+                            @if ($linea->condicion_prenda === 'nueva')
+                                <span class="badge" style="background:var(--azul-claro);">Nueva</span>
+                            @endif
+                            @if ($linea->color)
+                                <span class="badge" style="background:#6b7280;">{{ $linea->color }}</span>
+                            @endif
+                            @if ($linea->es_desmanche)
+                                <span class="badge" style="background:var(--amarillo);">Desmanche</span>
+                            @endif
+                        </td>
                         <td>{{ $linea->cantidad_entrada }}</td>
                         <td>{{ $linea->cantidad_salida ?? '—' }}</td>
                         @if ($puedeVerPrecios)
@@ -98,7 +109,20 @@
             </tbody>
         </table>
         @if ($puedeVerPrecios)
-            <p style="margin-top:.75rem;"><strong>Total: {{ $orden->detalle->every(fn ($l) => $l->subtotal !== null) ? '$'.number_format($orden->detalle->sum('subtotal'), 2) : 'Pendiente de conteo en planta' }}</strong></p>
+            @php
+                $todoConPrecio = $orden->detalle->every(fn ($l) => $l->subtotal !== null);
+                // #12: Desmanche es un servicio adicional sobre una prenda,
+                // no una prenda en sí — se sub-totaliza aparte del resto.
+                $subtotalDesmanche = $orden->detalle->where('es_desmanche', true)->sum('subtotal');
+                $subtotalLavanderia = $orden->detalle->where('es_desmanche', false)->sum('subtotal');
+            @endphp
+            @if ($todoConPrecio && $subtotalDesmanche > 0)
+                <p style="margin-top:.75rem;">Subtotal Lavandería: ${{ number_format($subtotalLavanderia, 2) }}</p>
+                <p>Subtotal Desmanche: ${{ number_format($subtotalDesmanche, 2) }}</p>
+                <p><strong>Total: ${{ number_format($subtotalLavanderia + $subtotalDesmanche, 2) }}</strong></p>
+            @else
+                <p style="margin-top:.75rem;"><strong>Total: {{ $todoConPrecio ? '$'.number_format($orden->detalle->sum('subtotal'), 2) : 'Pendiente de conteo en planta' }}</strong></p>
+            @endif
         @endif
     </div>
 
