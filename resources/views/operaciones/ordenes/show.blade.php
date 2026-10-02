@@ -126,6 +126,27 @@
         @endif
     </div>
 
+    <div class="card" style="max-width:640px; margin-top:1rem;">
+        <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+            <a href="{{ $pdfUrl }}" target="_blank" rel="noopener" class="btn btn-secondary">📄 Ver PDF</a>
+            @if ($puedeVerPrecios)
+                @if ($whatsappUrl)
+                    <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener" class="btn" style="background:#25D366;">
+                        📲 Enviar nota por WhatsApp
+                    </a>
+                @else
+                    <div class="alert alert-error" style="text-align:left; margin:0; flex:1;">
+                        Este cliente no tiene teléfono registrado — agrégalo en Clientes
+                        para poder enviarle la nota por WhatsApp.
+                    </div>
+                @endif
+            @endif
+        </div>
+        @if ($puedeVerPrecios)
+            @include('partials.whatsapp-otro-numero', ['mensaje' => $whatsappMensaje])
+        @endif
+    </div>
+
     @php $incidenciasOrden = $orden->detalle->pluck('incidencias')->flatten(); @endphp
     @if ($incidenciasOrden->isNotEmpty())
         <div class="card" style="max-width:640px; margin-top:1rem;">
