@@ -228,6 +228,22 @@ class RecoleccionTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_pantalla_de_nuevo_pedido_usa_buscador_de_cliente_no_select(): void
+    {
+        // El <select> de clientes se reemplazó por una caja de texto con
+        // búsqueda dinámica (igual que el buscador de prendas) para que no
+        // se vuelva una lista interminable de hoteles.
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $cliente = Cliente::factory()->create(['estatus_credito' => true, 'nombre_comercial' => 'Los Aluxes']);
+
+        $response = $this->actingAs($vendedor)->get(route('vendedor.recoleccion.create'));
+
+        $response->assertOk();
+        $response->assertDontSee('<select id="id_cliente"', false);
+        $response->assertSee('id="buscador-cliente"', false);
+        $response->assertSee('"nombre":"Los Aluxes"', false);
+    }
+
     public function test_admin_cannot_access_recoleccion_flow(): void
     {
         $admin = Usuario::factory()->create(['rol' => 'ADMIN']);

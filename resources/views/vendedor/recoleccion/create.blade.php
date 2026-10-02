@@ -16,18 +16,20 @@
     <form method="POST" action="{{ route('vendedor.recoleccion.store') }}" id="form-pedido">
         @csrf
         <div class="card" style="margin-bottom:1rem;">
+            @php $clienteViejo = $clientes->firstWhere('id_cliente', (int) old('id_cliente')); @endphp
             <div class="form-group">
-                <label for="id_cliente">Cliente *</label>
-                <select id="id_cliente" name="id_cliente" required style="max-width:100%;">
-                    <option value="">— Buscar cliente —</option>
-                    @forelse ($clientes as $cliente)
-                        <option value="{{ $cliente->id_cliente }}" {{ old('id_cliente') == $cliente->id_cliente ? 'selected' : '' }}>
-                            {{ $cliente->nombre_comercial }}
-                        </option>
-                    @empty
-                        <option value="" disabled>No hay clientes con crédito activo</option>
-                    @endforelse
-                </select>
+                <label for="buscador-cliente">Cliente *</label>
+                <div style="position:relative; max-width:420px;">
+                    <input type="text" id="buscador-cliente" autocomplete="off"
+                           value="{{ $clienteViejo->nombre_comercial ?? '' }}"
+                           placeholder="{{ $clientes->isEmpty() ? 'No hay clientes con crédito activo' : 'Escribe el nombre del cliente...' }}"
+                           {{ $clientes->isEmpty() ? 'disabled' : '' }}
+                           style="width:100%; padding:.65rem .8rem; font-size:1rem; border:1px solid #d1d5db; border-radius:.375rem;">
+                    <input type="hidden" id="id_cliente" name="id_cliente" value="{{ old('id_cliente') }}">
+                    <div id="sugerencias-cliente" style="display:none; position:absolute; z-index:10; left:0; right:0; top:100%;
+                         background:#fff; border:1px solid #d1d5db; border-top:none; border-radius:0 0 .375rem .375rem;
+                         max-height:280px; overflow-y:auto; box-shadow:0 4px 10px rgba(0,0,0,.08);"></div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -115,6 +117,7 @@
         // tiene tarifado. El catálogo ya no se precarga completo: se pide
         // por AJAX cada vez que cambia el cliente.
         var CATALOGO = @json($catalogoJs);
+        var CLIENTES = @json($clientes->map(fn ($c) => ['id' => $c->id_cliente, 'nombre' => $c->nombre_comercial])->values());
         var CLIENTE_CATALOGO_ACTUAL = {{ old('id_cliente') ? (int) old('id_cliente') : 'null' }};
         var URL_SERVICIOS_CLIENTE = @json(route('vendedor.recoleccion.servicios', ['cliente' => '__ID__']));
 
@@ -125,7 +128,9 @@
         var DESMANCHE_PREVIO = @json(old('desmanche', []));
 
         (function () {
-            var selectCliente = document.getElementById('id_cliente');
+            var inputCliente = document.getElementById('buscador-cliente');
+            var idClienteEl = document.getElementById('id_cliente');
+            var cajaCliente = document.getElementById('sugerencias-cliente');
             var avisoSinCliente = document.getElementById('aviso-sin-cliente');
             var buscadorWrap = document.getElementById('buscador-prenda-wrap');
             var input = document.getElementById('buscador-prenda');
@@ -164,13 +169,7 @@
                     });
             }
 
-            selectCliente.addEventListener('change', function () {
-                var idCliente = selectCliente.value;
-                if (!idCliente) {
-                    mostrarBuscador(false);
-                    return;
-                }
-
+            function seleccionarCliente(idCliente) {
                 // Cambiar de cliente invalida el carrito armado (las prendas
                 // y precios pactados dependen del cliente).
                 if (CLIENTE_CATALOGO_ACTUAL !== null && CLIENTE_CATALOGO_ACTUAL !== parseInt(idCliente, 10) && Object.keys(carrito).length > 0) {
@@ -181,6 +180,51 @@
                     renderCarrito();
                     mostrarBuscador(true);
                 });
+            }
+
+            function buscarClientes(termino) {
+                return CLIENTES.filter(function (c) {
+                    return coincideTodasLasPalabras(c.nombre, termino);
+                }).slice(0, 10);
+            }
+
+            function mostrarSugerenciasCliente(resultados) {
+                if (resultados.length === 0) {
+                    cajaCliente.innerHTML = '<div style="padding:.6rem .8rem; color:#6b7280; font-size:.85rem;">Sin resultados.</div>';
+                    cajaCliente.style.display = 'block';
+                    return;
+                }
+                cajaCliente.innerHTML = resultados.map(function (c) {
+                    return '<div class="sugerencia-cliente" data-id="' + c.id + '" data-nombre="' + c.nombre.replace(/"/g, '&quot;') + '" ' +
+                        'style="padding:.6rem .8rem; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:.9rem;">' + c.nombre + '</div>';
+                }).join('');
+                cajaCliente.style.display = 'block';
+
+                cajaCliente.querySelectorAll('.sugerencia-cliente').forEach(function (el) {
+                    el.addEventListener('mouseenter', function () { el.style.background = '#F5F5F5'; });
+                    el.addEventListener('mouseleave', function () { el.style.background = ''; });
+                    el.addEventListener('click', function () {
+                        var idCliente = el.getAttribute('data-id');
+                        idClienteEl.value = idCliente;
+                        inputCliente.value = el.getAttribute('data-nombre');
+                        cajaCliente.style.display = 'none';
+                        seleccionarCliente(idCliente);
+                    });
+                });
+            }
+
+            inputCliente.addEventListener('input', function () {
+                // Escribir de nuevo invalida la selección anterior hasta que
+                // se elija (o reconfirme) una sugerencia de la lista.
+                idClienteEl.value = '';
+                mostrarBuscador(false);
+                mostrarSugerenciasCliente(buscarClientes(inputCliente.value));
+            });
+            inputCliente.addEventListener('focus', function () {
+                if (inputCliente.value.trim().length > 0) mostrarSugerenciasCliente(buscarClientes(inputCliente.value));
+            });
+            document.addEventListener('click', function (e) {
+                if (!cajaCliente.contains(e.target) && e.target !== inputCliente) cajaCliente.style.display = 'none';
             });
 
             if (CLIENTE_CATALOGO_ACTUAL) {
@@ -192,14 +236,23 @@
                     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             }
 
+            // Búsqueda "por aproximación": todas las palabras escritas deben
+            // aparecer en el texto, sin importar el orden (ej. "Aluxes"
+            // encuentra "Los Aluxes", y "Los Aluxes" encuentra "Aluxes Los"),
+            // mismo criterio que App\Support\Busqueda en los catálogos.
+            function coincideTodasLasPalabras(texto, termino) {
+                var palabras = normalizar(termino).split(/\s+/).filter(Boolean);
+                if (palabras.length === 0) return false;
+                var normalizado = normalizar(texto);
+                return palabras.every(function (palabra) { return normalizado.indexOf(palabra) !== -1; });
+            }
+
             function buscar(termino) {
                 // Solo coincide contra el nombre de la prenda, no la
                 // categoría — antes "hotelería" mostraba todas las prendas
                 // de esa categoría en vez de acotar a lo que se escribió.
-                var q = normalizar(termino);
-                if (q.length === 0) return [];
                 return CATALOGO.filter(function (p) {
-                    return normalizar(p.descripcion).includes(q);
+                    return coincideTodasLasPalabras(p.descripcion, termino);
                 }).slice(0, 10);
             }
 
@@ -354,6 +407,11 @@
             }
 
             document.getElementById('form-pedido').addEventListener('submit', function (e) {
+                if (!idClienteEl.value) {
+                    e.preventDefault();
+                    alert('Elige un cliente de la lista de sugerencias.');
+                    return;
+                }
                 if (Object.keys(carrito).length === 0) {
                     e.preventDefault();
                     alert('Agrega al menos una prenda al pedido.');
