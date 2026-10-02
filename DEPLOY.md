@@ -178,6 +178,25 @@ y borra **todos los archivos `.php`** que encuentres ahí (`routes-v7.php`,
 `packages.php`, `services.php`, `config.php`, etc.). Deja únicamente el
 `.gitignore`.
 
+### 3.1.1 Borrar vistas Blade compiladas
+
+Cada vista `.blade.php` se compila una sola vez a PHP plano dentro de
+`storage/framework/views/` y Laravel solo la vuelve a compilar si detecta
+que el archivo fuente cambió; en hosting compartido esa detección a veces
+falla (reloj del servidor, zip que preserva una fecha vieja, etc.), y el
+sitio sigue mostrando el HTML de la vista **anterior** aunque el archivo
+`.blade.php` ya esté actualizado — sin dar ningún error.
+
+En el Administrador de Archivos o por Terminal, entra a
+`vitalclean.311consultores.com/storage/framework/views/` y borra **todos
+los archivos `.php`** que encuentres ahí (deja `.gitignore` si existe). Se
+regeneran solos en la siguiente visita a cada pantalla.
+
+Por Terminal es un solo comando:
+```
+rm -f storage/framework/views/*.php
+```
+
 ### 3.2 Reiniciar OPcache de PHP
 
 Aunque borres la caché de Laravel, **OPcache de PHP** puede seguir
@@ -207,6 +226,7 @@ documentan aquí para no repetir el diagnóstico desde cero.
 | `View [operaciones.xxx.index] not found` | Faltan archivos de vista, o no se recrearon bien las subcarpetas al copiar manualmente | Verifica que la estructura de carpetas de `resources/views/` en el servidor coincida exactamente con la del paquete; usa "Extraer" del zip directo dentro de `resources/` en vez de copiar archivo por archivo |
 | El sitio entero da **"te redireccionó demasiadas veces"** (`ERR_TOO_MANY_REDIRECTS`) | Bug ya corregido: un usuario autenticado visitando `/` o `/login` entraba en un bucle | Asegúrate de tener la versión más reciente de `routes/web.php` (con el chequeo `auth()->check()` en la ruta `/`) |
 | Cambios que no se reflejan pese a haber subido el archivo correcto | Casi siempre OPcache | Repite el paso 3.2 |
+| Un cambio a una vista (`.blade.php`) — una columna nueva en una tabla, un botón, un badge — no aparece pese a haber subido el archivo correcto y limpiado OPcache | Vista Blade compilada vieja en `storage/framework/views/` que no se invalidó sola | Repite el paso 3.1.1 (`rm -f storage/framework/views/*.php`) |
 | **Sitio caído por completo (500 en todo, incluido `/login`)** tras subir manualmente carpetas de `vendor/` para una librería nueva | El Administrador de Archivos corrompe/trunca archivos grandes (`vendor/composer/autoload_classmap.php` puede pesar 600KB+) o deja carpetas de paquetes incompletas al extraer zips grandes. El error aparece en `error_log` (dentro de `public/`, **no** en `storage/logs/laravel.log` — un error tan temprano en el arranque de PHP ocurre antes de que Laravel pueda registrar nada) como `PHP Fatal error: Uncaught Error: Failed opening required '.../vendor/<algún-paquete>/...'` | **No subas `vendor/` a mano.** Usa Terminal + `composer install` (sección 1.6) — reconstruye todo el árbol de dependencias de una sola vez, sin depender de que la extracción de un zip haya sido perfecta |
 
 ---
@@ -217,6 +237,7 @@ documentan aquí para no repetir el diagnóstico desde cero.
       (no en `public_html`)
 - [ ] Copiar/sobrescribir los archivos indicados
 - [ ] Borrar `bootstrap/cache/*.php` (dejar `.gitignore`)
+- [ ] Borrar `storage/framework/views/*.php` (dejar `.gitignore`)
 - [ ] Subir `clear-opcache.php` a `public_html/`, visitarlo, borrarlo
 - [ ] Probar el cambio en el navegador (idealmente en incógnito, para
       descartar caché del navegador)

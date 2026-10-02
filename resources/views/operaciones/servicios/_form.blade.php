@@ -29,3 +29,15 @@
     </datalist>
     @error('categoria') <div class="field-error">{{ $message }}</div> @enderror
 </div>
+
+<div class="form-group">
+    <label style="display:flex; align-items:center; gap:.5rem; font-weight:600;">
+        <input type="checkbox" name="requiere_color" value="1" style="width:auto;"
+               @checked(old('requiere_color', $servicio->requiere_color ?? false))>
+        Requiere clasificarse por color
+    </label>
+    <p style="margin:.3rem 0 0; font-size:.8rem; color:#6b7280;">
+        Actívalo si esta prenda existe en varias subdivisiones de color (ej. blancos vs. de color) —
+        al levantar un pedido, el Vendedor podrá anotar el color de esta prenda.
+    </p>
+</div>

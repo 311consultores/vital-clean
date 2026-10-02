@@ -47,30 +47,34 @@
                 @endif
             </form>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Folio</th>
-                    <th>Cliente</th>
-                    <th>Estatus</th>
-                    <th></th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($folios as $orden)
+        <div id="tabla-auto-actualizable">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}</td>
-                        <td>{{ $orden->cliente->nombre_comercial }}</td>
-                        <td><span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span></td>
-                        <td><a class="btn btn-sm" href="{{ route('planta.conteo', $orden) }}">Auditar</a></td>
-                        <td><a class="btn btn-sm btn-secondary" href="{{ route('operaciones.ordenes.show', $orden) }}">Ver</a></td>
+                        <th>Folio</th>
+                        <th>Cliente</th>
+                        <th>Estatus</th>
+                        <th></th>
+                        <th></th>
                     </tr>
-                @empty
-                    <tr><td colspan="5">No hay folios pendientes de auditar ahora mismo.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div style="padding:1rem;">{{ $folios->links() }}</div>
+                </thead>
+                <tbody>
+                    @forelse ($folios as $orden)
+                        <tr data-href="{{ route('planta.conteo', $orden) }}">
+                            <td>{{ $orden->folio_display }}</td>
+                            <td>{{ $orden->cliente->nombre_comercial }}</td>
+                            <td><span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span></td>
+                            <td><a class="btn btn-sm" href="{{ route('planta.conteo', $orden) }}">Auditar</a></td>
+                            <td><a class="btn btn-sm btn-secondary" href="{{ route('operaciones.ordenes.show', $orden) }}">Ver</a></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5">No hay folios pendientes de auditar ahora mismo.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div style="padding:1rem;">{{ $folios->links() }}</div>
+        </div>
     </div>
+
+    @include('partials.auto-refresco')
 @endsection

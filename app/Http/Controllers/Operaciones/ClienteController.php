@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Operaciones;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClienteRequest;
 use App\Models\Cliente;
+use App\Support\Busqueda;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -14,21 +16,45 @@ use Illuminate\View\View;
  */
 class ClienteController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $clientes = Cliente::orderBy('nombre_comercial')->paginate(15);
+        $clientes = Busqueda::porPalabras(
+            Cliente::query(),
+            ['nombre_comercial', 'razon_social'],
+            $request->input('buscar')
+        )
+            ->orderBy('nombre_comercial')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('operaciones.clientes.index', compact('clientes'));
     }
 
     public function create(): View
     {
-        return view('operaciones.clientes.create');
+        // #3: candidatos para clonar tarifario (solo clientes que ya tienen tarifas capturadas).
+        $clientesConTarifas = Cliente::whereHas('tarifas')->orderBy('nombre_comercial')->get();
+
+        return view('operaciones.clientes.create', compact('clientesConTarifas'));
     }
 
     public function store(ClienteRequest $request): RedirectResponse
     {
-        Cliente::create($request->validated() + ['estatus_credito' => $request->boolean('estatus_credito')]);
+        $datos = $request->validated();
+        $clonarDe = $datos['clonar_tarifario_de'] ?? null;
+        unset($datos['clonar_tarifario_de']);
+
+        $cliente = Cliente::create($datos + ['estatus_credito' => $request->boolean('estatus_credito')]);
+
+        if ($clonarDe) {
+            $origen = Cliente::with('tarifas')->find($clonarDe);
+            foreach ($origen?->tarifas ?? [] as $tarifa) {
+                $cliente->tarifas()->create([
+                    'id_servicio' => $tarifa->id_servicio,
+                    'precio_pactado' => $tarifa->precio_pactado,
+                ]);
+            }
+        }
 
         return redirect()->route('operaciones.clientes.index')->with('status', 'Cliente creado correctamente.');
     }

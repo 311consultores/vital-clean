@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Operaciones;
 
 use App\Http\Controllers\Controller;
-use App\Models\Incidencia;
+use App\Models\DetalleRemision;
 use App\Models\NotaRemision;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,6 +13,16 @@ use Illuminate\View\View;
  */
 class DashboardController extends Controller
 {
+    /**
+     * Pestaña "En Proceso": desde que se recolecta hasta que queda listo
+     * para entregar. La otra pestaña ("Finalizadas") junta ENTREGADO y
+     * CANCELADO — son los dos estatus terminales del flujo (RN-07).
+     */
+    protected const ESTATUS_POR_VISTA = [
+        'proceso' => ['RUTA', 'PLANTA_RECIBIDO', 'PROCESO', 'LISTO'],
+        'finalizadas' => ['ENTREGADO', 'CANCELADO'],
+    ];
+
     public function index(Request $request): View
     {
         $kpis = [
@@ -23,10 +33,21 @@ class DashboardController extends Controller
             'entregados_hoy' => NotaRemision::where('estatus_orden', 'ENTREGADO')
                 ->whereDate('updated_at', today())
                 ->count(),
+            // Proxy simple de "pendiente por cobrar" (el sistema todavía no
+            // registra pagos/facturación): valor de todos los pedidos
+            // activos (no cancelados) que ya tienen precio calculado.
+            'pendiente_cobrar' => DetalleRemision::whereHas(
+                'notaRemision',
+                fn ($q) => $q->where('estatus_orden', '!=', 'CANCELADO')
+            )->sum('subtotal'),
         ];
 
-        $ordenes = NotaRemision::with(['cliente', 'vendedor'])
+        $vista = $request->input('vista', 'proceso');
+        $estatus = self::ESTATUS_POR_VISTA[$vista] ?? self::ESTATUS_POR_VISTA['proceso'];
+
+        $ordenes = NotaRemision::with(['cliente', 'vendedor', 'detalle'])
             ->withSum('detalle as total', 'subtotal')
+            ->whereIn('estatus_orden', $estatus)
             ->when($request->filled('buscar'), function ($query) use ($request) {
                 $buscar = $request->input('buscar');
                 $query->where(function ($q) use ($buscar) {
@@ -38,11 +59,19 @@ class DashboardController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $alertasCalidad = Incidencia::with('detalle.notaRemision', 'detalle.servicio')
-            ->latest('created_at')
-            ->take(5)
-            ->get();
+        // #11: aviso simple de pedidos nuevos desde la última visita al dashboard
+        // (sin infraestructura de tiempo real: se recalcula en cada carga/recarga).
+        // Visitar el dashboard es lo que "marca como visto" — por eso la
+        // sesión se actualiza aquí y no en la campanita del encabezado
+        // (AppServiceProvider), que solo lee este mismo valor. El
+        // auto-refresco en segundo plano (ver partials.auto-refresco) manda
+        // _poll=1 para no contar como "visita" y no vaciar el aviso
+        // mientras la tabla ya se está actualizando sola.
+        $pedidosNuevos = NotaRemision::contarNuevosDesde($request->session()->get('dashboard_ultima_visita'));
+        if (! $request->boolean('_poll')) {
+            $request->session()->put('dashboard_ultima_visita', now());
+        }
 
-        return view('operaciones.dashboard', compact('kpis', 'ordenes', 'alertasCalidad'));
+        return view('operaciones.dashboard', compact('kpis', 'ordenes', 'pedidosNuevos', 'vista'));
     }
 }

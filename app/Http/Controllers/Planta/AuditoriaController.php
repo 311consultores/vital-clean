@@ -53,12 +53,11 @@ class AuditoriaController extends Controller
             return back()->withInput()->with('error', "No se encontró ningún folio con \"{$folio}\".");
         }
 
-        $esAdmin = $request->user()->rol === 'ADMIN';
-
-        if (! in_array($orden->estatus_orden, self::ESTATUS_PROCESABLES, true) && ! $esAdmin) {
-            return back()->withInput()->with('error', "El folio {$orden->folio_fisico} ya está en estatus {$orden->estatus_orden}; no se puede volver a auditar.");
-        }
-
+        // Si ya se auditó, no se bloquea la búsqueda con un error: se manda
+        // a la misma pantalla en modo solo-lectura (conteo()/la vista ya
+        // lo maneja vía $soloLectura) — antes el Operador tecleaba el folio
+        // y solo recibía un mensaje de error sin poder ver nada, lo cual
+        // confundía más que ayudaba.
         return redirect()->route('planta.conteo', $orden);
     }
 
@@ -145,6 +144,6 @@ class AuditoriaController extends Controller
         });
 
         return redirect()->route('planta.buscar')
-            ->with('status', "Conteo de VC-".str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT)." guardado y bloqueado correctamente.");
+            ->with('status', "Conteo de {$orden->folio_display} guardado y bloqueado correctamente.");
     }
 }
