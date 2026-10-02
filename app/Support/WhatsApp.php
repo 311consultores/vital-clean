@@ -128,26 +128,20 @@ class WhatsApp
     }
 
     /**
-     * Deja solo dígitos y antepone el código de país de México (52) si el
-     * número capturado es un local de 10 dígitos (formato usual en el
-     * catálogo de clientes, ej. "999 780 8557").
+     * Deja solo dígitos y antepone la lada de México (52) a los últimos 10
+     * dígitos. Se asume que todo cliente/número es de México (no hay
+     * operación fuera del país) para no tener que lidiar con lada de país
+     * distinta — funciona igual si ya traía el 52 de más, un viejo prefijo
+     * 044/045, o solo el local a 10 dígitos.
      */
     protected static function normalizarTelefono(?string $telefono): ?string
     {
-        if (! $telefono) {
+        $digitos = preg_replace('/\D/', '', (string) $telefono);
+
+        if (strlen($digitos) < 10) {
             return null;
         }
 
-        $digitos = preg_replace('/\D/', '', $telefono);
-
-        if (! $digitos) {
-            return null;
-        }
-
-        if (strlen($digitos) === 10) {
-            $digitos = '52'.$digitos;
-        }
-
-        return $digitos;
+        return '52'.substr($digitos, -10);
     }
 }
