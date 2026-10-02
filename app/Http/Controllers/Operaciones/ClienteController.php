@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Operaciones;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClienteRequest;
 use App\Models\Cliente;
+use App\Support\Busqueda;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -14,9 +16,16 @@ use Illuminate\View\View;
  */
 class ClienteController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $clientes = Cliente::orderBy('nombre_comercial')->paginate(15);
+        $clientes = Busqueda::porPalabras(
+            Cliente::query(),
+            ['nombre_comercial', 'razon_social'],
+            $request->input('buscar')
+        )
+            ->orderBy('nombre_comercial')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('operaciones.clientes.index', compact('clientes'));
     }

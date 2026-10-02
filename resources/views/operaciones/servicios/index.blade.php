@@ -5,7 +5,17 @@
 @section('content')
     <div class="page-header">
         <h1>Catálogo de Servicios (Prendas)</h1>
-        <a href="{{ route('operaciones.servicios.create') }}" class="btn">+ Nuevo Servicio</a>
+        <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+            <form method="GET" action="{{ route('operaciones.servicios.index') }}" style="display:flex; gap:.5rem; flex-wrap:wrap;">
+                <input type="text" name="buscar" placeholder="Buscar servicio..." value="{{ request('buscar') }}"
+                       style="padding:.55rem .7rem; border:1px solid #d1d5db; border-radius:.375rem; min-width:220px;">
+                <button type="submit" class="btn btn-sm">Buscar</button>
+                @if (request('buscar'))
+                    <a href="{{ route('operaciones.servicios.index') }}" class="btn btn-sm btn-secondary">Limpiar</a>
+                @endif
+            </form>
+            <a href="{{ route('operaciones.servicios.create') }}" class="btn">+ Nuevo Servicio</a>
+        </div>
     </div>
 
     <table class="data-table">
@@ -36,7 +46,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="5">Aún no hay servicios registrados.</td></tr>
+                <tr><td colspan="5">{{ request('buscar') ? 'No hay servicios que coincidan con la búsqueda.' : 'Aún no hay servicios registrados.' }}</td></tr>
             @endforelse
         </tbody>
     </table>

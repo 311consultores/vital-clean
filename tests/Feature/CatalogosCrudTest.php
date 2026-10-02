@@ -69,6 +69,43 @@ class CatalogosCrudTest extends TestCase
         $response->assertSessionHasErrors('rfc');
     }
 
+    public function test_buscar_clientes_encuentra_aunque_falte_una_palabra(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $objetivo = Cliente::factory()->create(['nombre_comercial' => 'Los Aluxes']);
+        Cliente::factory()->create(['nombre_comercial' => 'Hotel Irrelevante']);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.clientes.index', ['buscar' => 'Aluxes']));
+
+        $response->assertOk();
+        $response->assertSee('Los Aluxes');
+        $response->assertDontSee('Hotel Irrelevante');
+    }
+
+    public function test_buscar_clientes_no_depende_del_orden_de_las_palabras(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $objetivo = Cliente::factory()->create(['nombre_comercial' => 'Los Aluxes']);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.clientes.index', ['buscar' => 'Aluxes Los']));
+
+        $response->assertOk();
+        $response->assertSee('Los Aluxes');
+    }
+
+    public function test_buscar_servicios_por_descripcion(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        Servicio::factory()->create(['descripcion' => 'Sábana King Size']);
+        Servicio::factory()->create(['descripcion' => 'Toalla de Mano']);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.servicios.index', ['buscar' => 'King Sábana']));
+
+        $response->assertOk();
+        $response->assertSee('Sábana King Size');
+        $response->assertDontSee('Toalla de Mano');
+    }
+
     public function test_operador_cannot_access_catalogos(): void
     {
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
