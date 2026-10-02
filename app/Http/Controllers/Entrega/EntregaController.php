@@ -167,6 +167,9 @@ class EntregaController extends Controller
                     $subnota->detalle()->create([
                         'id_servicio' => $linea->id_servicio,
                         'cantidad_entrada' => $r['pendiente'],
+                        'condicion_prenda' => $linea->condicion_prenda,
+                        'color' => $linea->color,
+                        'es_desmanche' => $linea->es_desmanche,
                     ]);
                 }
             }

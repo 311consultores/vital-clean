@@ -133,6 +133,9 @@ class ProduccionController extends Controller
                     $subnotaFaltantes->detalle()->create([
                         'id_servicio' => $linea->id_servicio,
                         'cantidad_entrada' => $cantidadFaltante,
+                        'condicion_prenda' => $linea->condicion_prenda,
+                        'color' => $linea->color,
+                        'es_desmanche' => $linea->es_desmanche,
                     ]);
                 }
             }

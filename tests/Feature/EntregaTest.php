@@ -186,6 +186,25 @@ class EntregaTest extends TestCase
         $this->assertNull($lineaSubnota->precio_aplicado, 'El precio se congela hasta que Planta vuelva a auditar la subnota.');
     }
 
+    public function test_subnota_por_entrega_parcial_conserva_condicion_color_y_desmanche(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioListo();
+        $detalle->update(['condicion_prenda' => 'usada', 'color' => 'Blanco', 'es_desmanche' => true]);
+
+        $this->actingAs($vendedor)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+            'entregado' => [$detalle->id_detalle => 3],
+        ]);
+
+        $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+        $lineaSubnota = $subnota->detalle()->first();
+
+        $this->assertSame('usada', $lineaSubnota->condicion_prenda);
+        $this->assertSame('Blanco', $lineaSubnota->color);
+        $this->assertTrue($lineaSubnota->es_desmanche);
+    }
+
     public function test_detalle_de_la_subnota_muestra_folio_y_fecha_de_la_nota_origen(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);

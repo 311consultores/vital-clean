@@ -24,6 +24,7 @@
         </div>
     @endif
 
+    <div id="tabla-auto-actualizable">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:.75rem; margin-bottom:1.25rem;">
         <div class="card"><div style="font-size:.8rem; color:#6b7280;">En Ruta</div><div style="font-size:1.6rem; font-weight:700; color:var(--amarillo);">{{ $kpis['en_ruta'] }}</div></div>
         <div class="card"><div style="font-size:.8rem; color:#6b7280;">En Auditoría</div><div style="font-size:1.6rem; font-weight:700; color:var(--azul-claro);">{{ $kpis['en_auditoria'] }}</div></div>
@@ -52,7 +53,7 @@
         </a>
     </div>
 
-    <div class="card" id="tabla-auto-actualizable" style="padding:0; overflow-x:auto;">
+    <div class="card" style="padding:0; overflow-x:auto;">
         <table class="data-table">
             <thead>
                 <tr>
@@ -103,6 +104,7 @@
             </tbody>
         </table>
         <div style="padding:1rem;">{{ $ordenes->links() }}</div>
+    </div>
     </div>
 
     @include('partials.auto-refresco')

@@ -128,6 +128,27 @@ class ProduccionTest extends TestCase
         $this->assertSame(2, $lineaSubnota->cantidad_entrada); // 5 - 3
     }
 
+    public function test_subfolio_por_faltante_conserva_condicion_color_y_desmanche(): void
+    {
+        // La línea original traía sus modificadores (#5/#11/#12); la nueva
+        // línea de la subnota debe conservarlos, no perderlos como pasaba
+        // antes (la subnota solo copiaba id_servicio y cantidad).
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+        ['orden' => $orden, 'detalle' => $detalle] = $this->crearFolioEnProceso(5);
+        $detalle->update(['condicion_prenda' => 'nueva', 'color' => 'Azul', 'es_desmanche' => true]);
+
+        $this->actingAs($operador)->post(route('produccion.guardar', $orden), [
+            'salidas' => [$detalle->id_detalle => 3],
+        ]);
+
+        $subnota = NotaRemision::where('folio_padre', $orden->folio_sistema)->first();
+        $lineaSubnota = $subnota->detalle()->first();
+
+        $this->assertSame('nueva', $lineaSubnota->condicion_prenda);
+        $this->assertSame('Azul', $lineaSubnota->color);
+        $this->assertTrue($lineaSubnota->es_desmanche);
+    }
+
     public function test_motivo_explicito_distinto_de_faltante_no_genera_subfolio(): void
     {
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);

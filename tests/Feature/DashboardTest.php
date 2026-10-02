@@ -373,6 +373,18 @@ class DashboardTest extends TestCase
             ->assertSee('id="tabla-auto-actualizable"', false);
     }
 
+    public function test_las_kpis_del_dashboard_se_actualizan_junto_con_la_tabla(): void
+    {
+        // Las cards de KPI quedaron fuera del auto-refresco al principio
+        // (solo se refrescaba "la tabla"): el usuario pidió que se
+        // actualicen juntas, así que ahora viven dentro del mismo
+        // contenedor id="tabla-auto-actualizable".
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+
+        $this->actingAs($admin)->get(route('operaciones.dashboard'))
+            ->assertSeeInOrder(['id="tabla-auto-actualizable"', 'En Ruta'], false);
+    }
+
     public function test_vendedor_no_ve_la_campanita_de_pedidos_nuevos(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
