@@ -376,6 +376,14 @@ class EntregaTest extends TestCase
         $response->assertSee(route('operaciones.ordenes.show', $orden), false);
     }
 
+    public function test_grid_de_listos_incluye_el_contenedor_de_auto_refresco(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+
+        $this->actingAs($vendedor)->get(route('entrega.buscar'))
+            ->assertSee('id="tabla-auto-actualizable"', false);
+    }
+
     public function test_vendedor_puede_explorar_el_folio_con_el_boton_ver(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);

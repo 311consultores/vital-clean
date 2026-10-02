@@ -52,7 +52,7 @@
         </a>
     </div>
 
-    <div class="card" style="padding:0; overflow-x:auto;">
+    <div class="card" id="tabla-auto-actualizable" style="padding:0; overflow-x:auto;">
         <table class="data-table">
             <thead>
                 <tr>
@@ -104,4 +104,6 @@
         </table>
         <div style="padding:1rem;">{{ $ordenes->links() }}</div>
     </div>
+
+    @include('partials.auto-refresco')
 @endsection

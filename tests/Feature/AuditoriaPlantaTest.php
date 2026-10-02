@@ -225,6 +225,14 @@ class AuditoriaPlantaTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_grid_de_pendientes_incluye_el_contenedor_de_auto_refresco(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+
+        $this->actingAs($operador)->get(route('planta.buscar'))
+            ->assertSee('id="tabla-auto-actualizable"', false);
+    }
+
     public function test_folio_ya_procesado_lleva_al_operador_a_verlo_solo_lectura(): void
     {
         // Antes esto regresaba un error genérico y no dejaba ver nada; ahora

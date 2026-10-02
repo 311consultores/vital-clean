@@ -216,6 +216,14 @@ class ProduccionTest extends TestCase
         $response->assertSee(route('operaciones.ordenes.show', $orden), false);
     }
 
+    public function test_grid_de_en_proceso_incluye_el_contenedor_de_auto_refresco(): void
+    {
+        $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);
+
+        $this->actingAs($operador)->get(route('produccion.buscar'))
+            ->assertSee('id="tabla-auto-actualizable"', false);
+    }
+
     public function test_grid_filtra_por_busqueda(): void
     {
         $operador = Usuario::factory()->create(['rol' => 'OPERADOR']);

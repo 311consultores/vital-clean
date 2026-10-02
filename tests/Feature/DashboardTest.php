@@ -345,6 +345,34 @@ class DashboardTest extends TestCase
         $response->assertDontSee('class="header-bell-badge"', false);
     }
 
+    public function test_el_auto_refresco_en_segundo_plano_no_cuenta_como_visita(): void
+    {
+        // El polling silencioso (ver partials.auto-refresco) manda
+        // _poll=1 para no "vaciar" el aviso de pedidos nuevos mientras la
+        // tabla ya se está refrescando sola en la pantalla abierta.
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $this->actingAs($admin)->get(route('operaciones.dashboard')); // marca "visto" en t0
+
+        $this->travel(2)->seconds();
+        $this->crearOrden('RUTA');
+
+        // Una petición de polling en segundo plano no debe actualizar la
+        // marca de "última visita".
+        $this->actingAs($admin)->get(route('operaciones.dashboard', ['_poll' => 1]));
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertViewHas('pedidosNuevos', 1);
+    }
+
+    public function test_las_pantallas_con_grid_incluyen_el_contenedor_de_auto_refresco(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+
+        $this->actingAs($admin)->get(route('operaciones.dashboard'))
+            ->assertSee('id="tabla-auto-actualizable"', false);
+    }
+
     public function test_vendedor_no_ve_la_campanita_de_pedidos_nuevos(): void
     {
         $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);

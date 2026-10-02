@@ -63,9 +63,14 @@ class DashboardController extends Controller
         // (sin infraestructura de tiempo real: se recalcula en cada carga/recarga).
         // Visitar el dashboard es lo que "marca como visto" — por eso la
         // sesión se actualiza aquí y no en la campanita del encabezado
-        // (AppServiceProvider), que solo lee este mismo valor.
+        // (AppServiceProvider), que solo lee este mismo valor. El
+        // auto-refresco en segundo plano (ver partials.auto-refresco) manda
+        // _poll=1 para no contar como "visita" y no vaciar el aviso
+        // mientras la tabla ya se está actualizando sola.
         $pedidosNuevos = NotaRemision::contarNuevosDesde($request->session()->get('dashboard_ultima_visita'));
-        $request->session()->put('dashboard_ultima_visita', now());
+        if (! $request->boolean('_poll')) {
+            $request->session()->put('dashboard_ultima_visita', now());
+        }
 
         return view('operaciones.dashboard', compact('kpis', 'ordenes', 'pedidosNuevos', 'vista'));
     }
