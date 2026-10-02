@@ -189,6 +189,7 @@ class RecoleccionController extends Controller
         return view('vendedor.recoleccion.exito', [
             'nota' => $notaRemision,
             'whatsappUrl' => WhatsApp::linkRecoleccion($notaRemision),
+            'whatsappMensaje' => WhatsApp::mensajeRecoleccion($notaRemision),
             'pdfUrl' => WhatsApp::linkPdf($notaRemision),
         ]);
     }

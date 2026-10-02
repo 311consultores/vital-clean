@@ -197,6 +197,54 @@ class DashboardTest extends TestCase
         $response->assertDontSee('$30.00');
     }
 
+    public function test_fila_del_dashboard_muestra_etiquetas_de_nueva_usada_y_desmanche(): void
+    {
+        // #4 del lote de último momento: poder identificar desde la fila del
+        // dashboard, sin entrar al detalle, si la orden trae prenda nueva,
+        // usada o algún desmanche.
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $orden = $this->crearOrden('PROCESO');
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 1,
+            'condicion_prenda' => 'nueva',
+        ]);
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 1,
+            'condicion_prenda' => 'usada',
+        ]);
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 1,
+            'es_desmanche' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Nueva', false);
+        $response->assertSee('Usada', false);
+        $response->assertSee('Desmanche', false);
+    }
+
+    public function test_fila_del_dashboard_sin_modificadores_no_muestra_etiquetas(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        $orden = $this->crearOrden('PROCESO');
+        $orden->detalle()->create([
+            'id_servicio' => Servicio::factory()->create()->id_servicio,
+            'cantidad_entrada' => 1,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('operaciones.dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('>Nueva<', false);
+        $response->assertDontSee('>Usada<', false);
+        $response->assertDontSee('>Desmanche<', false);
+    }
+
     public function test_dashboard_search_filters_by_folio_or_cliente(): void
     {
         $admin = Usuario::factory()->create(['rol' => 'ADMIN']);

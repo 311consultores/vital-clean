@@ -287,6 +287,10 @@ class EntregaTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('Enviar nota por WhatsApp');
         $response->assertSee('no tiene teléfono registrado');
+        // Aunque el cliente no tenga teléfono registrado, se puede enviar la
+        // nota a cualquier otro número capturado a mano (ej. quien recibe
+        // en recepción ese día).
+        $response->assertSee('Enviar a otro número');
     }
 
     public function test_confirmar_requiere_firma(): void
@@ -309,6 +313,36 @@ class EntregaTest extends TestCase
         $response = $this->actingAs($vendedor)->post(route('entrega.iniciar'), ['folio' => '02149']);
 
         $response->assertSessionHas('error');
+    }
+
+    public function test_admin_no_puede_reentregar_un_folio_ya_entregado(): void
+    {
+        // Antes el Administrador seguía viendo el formulario de "Confirmar
+        // Entrega" aun con el folio ya ENTREGADO, lo que confundía al
+        // operador (parecía que hacía falta volver a entregarlo).
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        ['orden' => $orden] = $this->crearFolioListo();
+        $orden->update(['estatus_orden' => 'ENTREGADO', 'firma_entrega' => 'x']);
+
+        $response = $this->actingAs($admin)->post(route('entrega.confirmar', $orden), [
+            'firma' => $this->firmaDataUrl(),
+        ]);
+
+        $response->assertSessionHas('error');
+        $this->assertSame('ENTREGADO', $orden->fresh()->estatus_orden);
+    }
+
+    public function test_remision_de_folio_entregado_oculta_el_formulario_de_entrega_al_admin(): void
+    {
+        $admin = Usuario::factory()->create(['rol' => 'ADMIN']);
+        ['orden' => $orden] = $this->crearFolioListo();
+        $orden->update(['estatus_orden' => 'ENTREGADO', 'firma_entrega' => 'x']);
+
+        $response = $this->actingAs($admin)->get(route('entrega.remision', $orden));
+
+        $response->assertOk();
+        $response->assertDontSee('Confirmar Entrega');
+        $response->assertSee('Ver PDF');
     }
 
     public function test_operador_no_tiene_acceso_a_entrega(): void

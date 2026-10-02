@@ -21,6 +21,7 @@
                 que lo agregue en Clientes para poder enviarle la nota por WhatsApp.
             </div>
         @endif
+        @include('partials.whatsapp-otro-numero', ['mensaje' => $whatsappMensaje])
 
         <div class="form-actions" style="justify-content:center;">
             <a href="{{ $pdfUrl }}" target="_blank" rel="noopener" class="btn btn-secondary">📄 Ver PDF</a>

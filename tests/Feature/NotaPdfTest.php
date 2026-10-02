@@ -101,6 +101,22 @@ class NotaPdfTest extends TestCase
         $this->assertStringContainsString('Total de piezas: 5', $html);
     }
 
+    public function test_el_pdf_desglosa_recibido_entregado_y_diferencia(): void
+    {
+        // El vendedor necesita poder explicarle al cliente por qué se
+        // entregó menos de lo que se recibió (ej. una prenda en espera de
+        // reposición) sin tener que hacer la resta a mano.
+        $orden = $this->crearFolio();
+        $orden->detalle()->first()->update(['cantidad_salida' => 3]);
+
+        $html = view('notas.pdf', ['orden' => $orden->load('detalle.servicio', 'detalle.incidencias')])->render();
+
+        $this->assertStringContainsString('Recibido', $html);
+        $this->assertStringContainsString('Entregado', $html);
+        $this->assertStringContainsString('Diferencia', $html);
+        $this->assertMatchesRegularExpression('/<td>5<\/td>\s*<td>3<\/td>\s*<td>2<\/td>/', $html);
+    }
+
     public function test_el_pdf_muestra_las_incidencias_reportadas(): void
     {
         $orden = $this->crearFolio();

@@ -5,7 +5,11 @@
 @php
     $esAdmin = auth()->user()->rol === 'ADMIN';
     $esVendedor = auth()->user()->rol === 'VENDEDOR';
-    $soloLectura = $orden->estatus_orden !== 'LISTO' && ! $esAdmin;
+    // Una vez ENTREGADO el folio queda de solo lectura para todos, incluido
+    // el Administrador: reabrir el formulario de entrega sobre un folio ya
+    // cerrado confundía al operador (botón "Confirmar Entrega" disponible
+    // sin ningún efecto útil).
+    $soloLectura = $orden->estatus_orden === 'ENTREGADO' || ($orden->estatus_orden !== 'LISTO' && ! $esAdmin);
     $total = $orden->detalle->sum('subtotal');
 @endphp
 
@@ -163,6 +167,7 @@
                     @endif
                     <a href="{{ $pdfUrl }}" target="_blank" rel="noopener" class="btn btn-secondary">📄 Ver PDF</a>
                 </div>
+                @include('partials.whatsapp-otro-numero', ['mensaje' => $whatsappMensaje])
             </div>
         @endif
         <div class="form-actions no-print" style="margin-top:1rem;">

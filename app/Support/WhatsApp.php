@@ -36,6 +36,19 @@ class WhatsApp
     }
 
     /**
+     * Mensaje que corresponde según el estatus de la nota: de entrega si el
+     * ciclo ya cerró (ENTREGADO), de recolección en cualquier otro caso. Es
+     * la misma regla que ya aplicaban por separado PedidoController y
+     * EntregaController al armar $whatsappUrl.
+     */
+    public static function mensajePara(NotaRemision $nota): string
+    {
+        return $nota->estatus_orden === 'ENTREGADO'
+            ? self::mensajeEntrega($nota)
+            : self::mensajeRecoleccion($nota);
+    }
+
+    /**
      * Enlace de WhatsApp para avisar la recolección (CU-01). Espera
      * $nota->cliente y $nota->detalle.servicio ya cargados.
      */
@@ -53,7 +66,12 @@ class WhatsApp
         return self::linkTo($nota->cliente->telefono, self::mensajeEntrega($nota));
     }
 
-    protected static function mensajeRecoleccion(NotaRemision $nota): string
+    /**
+     * Texto del mensaje de recolección (CU-01), público para poder
+     * reenviarlo a un número capturado a mano (ver mensajePara()) y no solo
+     * al teléfono registrado del cliente.
+     */
+    public static function mensajeRecoleccion(NotaRemision $nota): string
     {
         $pdfUrl = self::linkPdf($nota);
 
@@ -70,7 +88,11 @@ class WhatsApp
             .'Le avisaremos en cuanto esté lista para entrega. ¡Gracias por su preferencia!';
     }
 
-    protected static function mensajeEntrega(NotaRemision $nota): string
+    /**
+     * Texto del mensaje de entrega (CU-04), público por el mismo motivo que
+     * mensajeRecoleccion().
+     */
+    public static function mensajeEntrega(NotaRemision $nota): string
     {
         $pdfUrl = self::linkPdf($nota);
 

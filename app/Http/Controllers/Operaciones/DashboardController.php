@@ -45,7 +45,7 @@ class DashboardController extends Controller
         $vista = $request->input('vista', 'proceso');
         $estatus = self::ESTATUS_POR_VISTA[$vista] ?? self::ESTATUS_POR_VISTA['proceso'];
 
-        $ordenes = NotaRemision::with(['cliente', 'vendedor'])
+        $ordenes = NotaRemision::with(['cliente', 'vendedor', 'detalle'])
             ->withSum('detalle as total', 'subtotal')
             ->whereIn('estatus_orden', $estatus)
             ->when($request->filled('buscar'), function ($query) use ($request) {

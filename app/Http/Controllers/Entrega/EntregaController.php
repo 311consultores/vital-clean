@@ -84,16 +84,23 @@ class EntregaController extends Controller
         $whatsappUrl = $orden->estatus_orden === 'ENTREGADO'
             ? WhatsApp::linkEntrega($orden)
             : null;
+        $whatsappMensaje = $orden->estatus_orden === 'ENTREGADO'
+            ? WhatsApp::mensajeEntrega($orden)
+            : null;
         $pdfUrl = $orden->estatus_orden === 'ENTREGADO'
             ? WhatsApp::linkPdf($orden)
             : null;
 
-        return view('entrega.remision', compact('orden', 'whatsappUrl', 'pdfUrl'));
+        return view('entrega.remision', compact('orden', 'whatsappUrl', 'whatsappMensaje', 'pdfUrl'));
     }
 
     public function confirmar(Request $request, NotaRemision $orden): RedirectResponse
     {
         $esAdmin = $request->user()->rol === 'ADMIN';
+
+        if ($orden->estatus_orden === 'ENTREGADO') {
+            return back()->with('error', 'Este folio ya fue entregado; no se puede cerrar la entrega otra vez.');
+        }
 
         if ($orden->estatus_orden !== self::ESTATUS_PROCESABLE && ! $esAdmin) {
             return back()->with('error', 'Este folio ya no está Listo; no se puede cerrar la entrega otra vez.');

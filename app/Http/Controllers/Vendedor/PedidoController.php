@@ -46,6 +46,7 @@ class PedidoController extends Controller
         return view('vendedor.pedidos.show', [
             'nota' => $notaRemision,
             'whatsappUrl' => $whatsappUrl,
+            'whatsappMensaje' => WhatsApp::mensajePara($notaRemision),
             'pdfUrl' => WhatsApp::linkPdf($notaRemision),
         ]);
     }

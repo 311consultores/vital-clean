@@ -6,7 +6,7 @@
     <style>
         body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #1f2937; }
         .encabezado { width: 100%; margin-bottom: 4px; }
-        .encabezado .icono { width: 34px; height: 34px; float: left; margin-right: 8px; }
+        .encabezado .icono { height: 34px; width: auto; float: left; margin-right: 8px; }
         h1 { font-size: 20px; color: #1B1A4B; margin: 0 0 2px; }
         .subtitulo { color: #6b7280; margin: 0 0 18px; font-size: 11px; }
         .datos p { margin: 2px 0; }
@@ -60,14 +60,22 @@
         <thead>
             <tr>
                 <th>Prenda</th>
-                <th>Cantidad</th>
+                <th>Recibido</th>
+                <th>Entregado</th>
+                <th>Diferencia</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($orden->detalle as $linea)
+                @php
+                    $recibido = $linea->cantidad_entrada;
+                    $entregado = $linea->cantidad_salida ?? $linea->cantidad_entrada;
+                @endphp
                 <tr>
                     <td>{{ $linea->servicio->descripcion }}</td>
-                    <td>{{ $linea->cantidad_salida ?? $linea->cantidad_entrada }}</td>
+                    <td>{{ $recibido }}</td>
+                    <td>{{ $entregado }}</td>
+                    <td>{{ $recibido - $entregado }}</td>
                 </tr>
             @endforeach
         </tbody>

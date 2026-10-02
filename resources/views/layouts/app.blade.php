@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-    <link rel="icon" href="{{ asset('images/logo-vital-clean.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('images/isotipo-vital-clean.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
@@ -88,13 +88,6 @@
             header.app-header .btn-logout { padding: .5rem .65rem; }
         }
 
-        /* Identidad de marca — ver resources/views/partials/logo.blade.php */
-        .vc-logo { display: flex; align-items: center; gap: .45rem; }
-        .vc-logo-icon { flex-shrink: 0; display: block; }
-        .vc-logo-text { display: flex; align-items: baseline; gap: .3rem; line-height: 1; }
-        .vc-logo-super { display: none; }
-        .vc-logo-main { font-size: 1.05rem; font-weight: 900; letter-spacing: .02em; font-family: Arial, "Helvetica Neue", sans-serif; }
-        .vc-logo-script { font-size: .95rem; font-style: italic; font-family: "Brush Script MT", "Segoe Script", cursive; }
         .layout { display: flex; align-items: flex-start; }
         nav.sidebar {
             width: 210px;
@@ -282,7 +275,9 @@
                         </svg>
                     </button>
                 @endif
-                <span class="brand">@include('partials.logo', ['size' => 30, 'stacked' => false, 'light' => true])</span>
+                <span class="brand">
+                    <img src="{{ asset('images/logo-horizontal-claro.png') }}" alt="Lavandería Vital Clean" style="height: 28px; width: auto; display: block;">
+                </span>
             </span>
             <span class="header-user">
                 @if (in_array(auth()->user()->rol, ['ADMIN', 'OPERADOR'], true))

@@ -50,6 +50,7 @@
                 que lo agregue en Clientes para poder enviarle la nota por WhatsApp.
             </p>
         @endif
+        @include('partials.whatsapp-otro-numero', ['mensaje' => $whatsappMensaje])
     </div>
 
     <div class="form-actions">

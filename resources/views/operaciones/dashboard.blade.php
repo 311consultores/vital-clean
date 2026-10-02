@@ -77,7 +77,18 @@
                             <span title="Prioridad {{ ucfirst($orden->prioridad) }}"
                                   style="display:inline-block; width:10px; height:10px; border-radius:50%; background:{{ $colorPrioridad }};"></span>
                         </td>
-                        <td>{{ $orden->folio_display }}</td>
+                        <td>
+                            {{ $orden->folio_display }}
+                            @if ($orden->detalle->contains('condicion_prenda', 'nueva'))
+                                <span class="badge" style="background:var(--azul-claro);">Nueva</span>
+                            @endif
+                            @if ($orden->detalle->contains('condicion_prenda', 'usada'))
+                                <span class="badge" style="background:#6b7280;">Usada</span>
+                            @endif
+                            @if ($orden->detalle->contains('es_desmanche', true))
+                                <span class="badge" style="background:var(--amarillo);">Desmanche</span>
+                            @endif
+                        </td>
                         <td>{{ $orden->cliente->nombre_comercial }}</td>
                         <td><span class="badge badge-{{ strtolower($orden->estatus_orden) }}">{{ $orden->estatus_orden }}</span></td>
                         <td>{{ $orden->vendedor->nombre_completo ?? $orden->vendedor->username }}</td>
