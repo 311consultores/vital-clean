@@ -5,6 +5,16 @@
     <title>Vital Clean — Acceso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    {{--
+        Para tabletas dedicadas en modo kiosco (ej. Fully Kiosk Browser, o
+        "Agregar a pantalla de inicio" de Chrome): con esto, al abrirse
+        como app instalada, se ve a pantalla completa sin barra de
+        direcciones ni controles del navegador.
+    --}}
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#26437D">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="{{ asset('images/icon-192.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
