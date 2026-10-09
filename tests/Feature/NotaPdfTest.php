@@ -117,6 +117,24 @@ class NotaPdfTest extends TestCase
         $this->assertMatchesRegularExpression('/<td>5<\/td>\s*<td>3<\/td>\s*<td>2<\/td>/', $html);
     }
 
+    public function test_el_pdf_muestra_las_etiquetas_de_nueva_usada_y_desmanche(): void
+    {
+        $orden = $this->crearFolio();
+        $orden->detalle()->first()->update(['condicion_prenda' => 'nueva', 'es_desmanche' => true]);
+        $servicio2 = Servicio::factory()->create();
+        $orden->detalle()->create([
+            'id_servicio' => $servicio2->id_servicio,
+            'cantidad_entrada' => 2,
+            'condicion_prenda' => 'usada',
+        ]);
+
+        $html = view('notas.pdf', ['orden' => $orden->load('detalle.servicio', 'detalle.incidencias')])->render();
+
+        $this->assertStringContainsString('>Nueva<', $html);
+        $this->assertStringContainsString('>Usada<', $html);
+        $this->assertStringContainsString('>Desmanche<', $html);
+    }
+
     public function test_el_pdf_muestra_las_incidencias_reportadas(): void
     {
         $orden = $this->crearFolio();

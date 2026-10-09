@@ -16,6 +16,7 @@
         th { background: #26437D; color: #fff; }
         .total { text-align: right; font-size: 13px; margin-top: 10px; }
         .estatus { display: inline-block; padding: 2px 8px; border-radius: 10px; color: #fff; font-size: 10px; }
+        .badge-mod { display: inline-block; padding: 1px 6px; border-radius: 8px; color: #fff; font-size: 9px; margin-left: 4px; }
         footer { margin-top: 30px; font-size: 9px; color: #9ca3af; }
     </style>
 </head>
@@ -72,7 +73,17 @@
                     $entregado = $linea->cantidad_salida ?? $linea->cantidad_entrada;
                 @endphp
                 <tr>
-                    <td>{{ $linea->servicio->descripcion }}</td>
+                    <td>
+                        {{ $linea->servicio->descripcion }}
+                        @if ($linea->condicion_prenda === 'nueva')
+                            <span class="badge-mod" style="background:#17A9E0;">Nueva</span>
+                        @elseif ($linea->condicion_prenda === 'usada')
+                            <span class="badge-mod" style="background:#6b7280;">Usada</span>
+                        @endif
+                        @if ($linea->es_desmanche)
+                            <span class="badge-mod" style="background:#F39C12;">Desmanche</span>
+                        @endif
+                    </td>
                     <td>{{ $recibido }}</td>
                     <td>{{ $entregado }}</td>
                     <td>{{ $recibido - $entregado }}</td>
