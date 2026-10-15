@@ -117,13 +117,16 @@
                 trazado = false;
             });
 
-            document.getElementById('form-confirmar').addEventListener('submit', function (e) {
-                if (!trazado) {
-                    e.preventDefault();
-                    alert('Falta la firma del cliente.');
-                    return;
-                }
-                document.getElementById('firma-input').value = canvas.toDataURL('image/png');
+            EnvioResiliente.proteger(document.getElementById('form-confirmar'), {
+                etiqueta: 'tu pedido',
+                antesDeEnviar: function () {
+                    if (!trazado) {
+                        alert('Falta la firma del cliente.');
+                        return false;
+                    }
+                    document.getElementById('firma-input').value = canvas.toDataURL('image/png');
+                    return true;
+                },
             });
 
             if (navigator.geolocation) {

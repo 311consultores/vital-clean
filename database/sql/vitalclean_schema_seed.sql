@@ -53,6 +53,24 @@ INSERT INTO `sys_usuarios` VALUES
 UNLOCK TABLES;
 
 --
+-- Table structure for table `idempotency_keys`
+--
+
+DROP TABLE IF EXISTS `idempotency_keys`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `idempotency_keys` (
+  `clave` varchar(64) NOT NULL,
+  `id_usuario` bigint(20) unsigned NOT NULL,
+  `ruta` varchar(100) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`clave`),
+  KEY `idempotency_keys_id_usuario_foreign` (`id_usuario`),
+  CONSTRAINT `idempotency_keys_id_usuario_foreign` FOREIGN KEY (`id_usuario`) REFERENCES `sys_usuarios` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `cat_clientes`
 --
 

@@ -239,13 +239,16 @@
                     trazado = false;
                 });
 
-                document.getElementById('form-confirmar').addEventListener('submit', function (e) {
-                    if (!trazado) {
-                        e.preventDefault();
-                        alert('Falta la firma de recepción.');
-                        return;
-                    }
-                    document.getElementById('firma-input').value = canvas.toDataURL('image/png');
+                EnvioResiliente.proteger(document.getElementById('form-confirmar'), {
+                    etiqueta: 'esta entrega',
+                    antesDeEnviar: function () {
+                        if (!trazado) {
+                            alert('Falta la firma de recepción.');
+                            return false;
+                        }
+                        document.getElementById('firma-input').value = canvas.toDataURL('image/png');
+                        return true;
+                    },
                 });
 
                 // Entrega parcial: si alguna línea se reduce por debajo del

@@ -7,6 +7,7 @@ use App\Http\Requests\RecoleccionRequest;
 use App\Models\Cliente;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
+use App\Support\Idempotencia;
 use App\Support\WhatsApp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -119,9 +120,19 @@ class RecoleccionController extends Controller
 
     public function confirmar(Request $request): RedirectResponse
     {
+        $claveIdempotencia = $request->input('idempotency_key');
         $pendiente = $request->session()->get(self::SESSION_KEY);
 
         if (! $pendiente) {
+            // Reintento de un envío que ya se había procesado con éxito
+            // antes (la sesión se vació en ese primer intento aunque su
+            // respuesta se perdiera por la señal — ver
+            // public/js/envio-resiliente.js) — no es un error real.
+            if ($claveIdempotencia && DB::table('idempotency_keys')->where('clave', $claveIdempotencia)->exists()) {
+                return redirect()->route('vendedor.pedidos.index')
+                    ->with('status', 'Este pedido ya se había registrado — lo encuentras en tu listado.');
+            }
+
             return redirect()->route('vendedor.recoleccion.create')
                 ->with('error', 'No hay un pedido en curso. Empieza de nuevo.');
         }
@@ -143,7 +154,15 @@ class RecoleccionController extends Controller
 
         $firmaBinaria = base64_decode(substr($request->input('firma'), strlen('data:image/png;base64,')));
 
-        $nota = DB::transaction(function () use ($pendiente, $firmaBinaria, $request) {
+        $nota = DB::transaction(function () use ($pendiente, $firmaBinaria, $request, $claveIdempotencia) {
+            // Envío resiliente a conexión intermitente (ver
+            // public/js/envio-resiliente.js): si esta firma ya se procesó
+            // en un intento anterior cuya respuesta se perdió, no se
+            // duplica el folio.
+            if (! Idempotencia::reclamar($claveIdempotencia, $request->user()->id_usuario, 'recoleccion.confirmar')) {
+                return null;
+            }
+
             // folio_fisico es NOT NULL y depende de folio_sistema (autoincrement),
             // que solo existe una vez insertada la fila: se crea con un valor
             // temporal y se reemplaza de inmediato por el folio autogenerado.
@@ -176,6 +195,15 @@ class RecoleccionController extends Controller
         });
 
         $request->session()->forget(self::SESSION_KEY);
+
+        if (! $nota) {
+            // Duplicado: esta firma ya había creado un folio en un intento
+            // anterior. No sabemos aquí cuál es (no se buscó a propósito,
+            // para no complicar el caso común), pero el vendedor lo
+            // encuentra en su listado.
+            return redirect()->route('vendedor.pedidos.index')
+                ->with('status', 'Este pedido ya se había registrado — lo encuentras en tu listado.');
+        }
 
         return redirect()->route('vendedor.recoleccion.exito', $nota);
     }

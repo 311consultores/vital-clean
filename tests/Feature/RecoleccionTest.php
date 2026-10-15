@@ -72,6 +72,44 @@ class RecoleccionTest extends TestCase
         $this->assertNotNull($nota->firma_cliente);
     }
 
+    public function test_reintentar_confirmar_con_la_misma_clave_no_duplica_el_folio(): void
+    {
+        // Envío resiliente a conexión intermitente (ver
+        // public/js/envio-resiliente.js): si la respuesta del primer
+        // intento se pierde por la señal, el navegador reintenta el mismo
+        // envío con la misma idempotency_key — no debe crear un segundo folio.
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+        $cliente = Cliente::factory()->create(['estatus_credito' => true]);
+        $servicio = Servicio::factory()->create();
+        TarifaCliente::factory()->create(['id_cliente' => $cliente->id_cliente, 'id_servicio' => $servicio->id_servicio]);
+
+        $this->actingAs($vendedor);
+        $this->post(route('vendedor.recoleccion.store'), [
+            'id_cliente' => $cliente->id_cliente,
+            'cantidades' => [$servicio->id_servicio => 5],
+        ]);
+
+        $clave = 'clave-de-prueba-123';
+
+        $primero = $this->post(route('vendedor.recoleccion.confirmar'), [
+            'firma' => $this->firmaDataUrl(),
+            'idempotency_key' => $clave,
+        ]);
+        $nota = NotaRemision::first();
+        $primero->assertRedirect(route('vendedor.recoleccion.exito', $nota));
+
+        // Reintento: la sesión del carrito ya se vació en el primer
+        // intento exitoso, igual que pasaría si su respuesta nunca llegó
+        // a la tableta por la señal.
+        $segundo = $this->post(route('vendedor.recoleccion.confirmar'), [
+            'firma' => $this->firmaDataUrl(),
+            'idempotency_key' => $clave,
+        ]);
+
+        $segundo->assertRedirect(route('vendedor.pedidos.index'));
+        $this->assertDatabaseCount('ope_notas_remision', 1);
+    }
+
     public function test_captura_condicion_color_y_desmanche_por_prenda(): void
     {
         // #5/#11/#12: nueva/usada se captura desde recolección; color solo

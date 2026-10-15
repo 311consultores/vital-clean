@@ -11,6 +11,17 @@
     <meta name="theme-color" content="#26437D">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="{{ asset('images/icon-192.png') }}">
+    @auth
+        {{--
+            Se carga en <head>, antes de @yield('content'), porque las
+            vistas que lo usan (resumen de pedido, cierre de entrega) lo
+            referencian en su propio <script> inline — si se cargara al
+            final del <body> (como el resto de los scripts de esta
+            plantilla), EnvioResiliente todavía no existiría cuando esas
+            vistas intentan usarlo.
+        --}}
+        <script src="{{ asset('js/envio-resiliente.js') }}"></script>
+    @endauth
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
@@ -313,6 +324,10 @@
     @endauth
 
     @auth
+        <div id="banner-envios-pendientes" style="display:none; padding:.6rem 1rem; text-align:center; font-size:.85rem; font-weight:600;"></div>
+    @endauth
+
+    @auth
         @if (in_array(auth()->user()->rol, ['ADMIN', 'OPERADOR'], true))
             <div class="layout">
                 <nav class="sidebar" id="app-sidebar">
@@ -393,5 +408,25 @@
             window.location = fila.dataset.href;
         });
     </script>
+
+    @auth
+        {{--
+            Envíos pendientes por falta de señal (Nuevo Pedido / Cierre de
+            Entrega — ver public/js/envio-resiliente.js, cargado en <head>):
+            se reintentan al cargar cualquier pantalla, al volver la
+            conexión, y cada 20s mientras el sistema esté abierto.
+        --}}
+        <script>
+            (function () {
+                EnvioResiliente.actualizarBanner();
+                EnvioResiliente.intentarVaciarCola();
+                window.addEventListener('online', EnvioResiliente.intentarVaciarCola);
+                setInterval(function () {
+                    EnvioResiliente.intentarVaciarCola();
+                    EnvioResiliente.actualizarBanner();
+                }, 20000);
+            })();
+        </script>
+    @endauth
 </body>
 </html>
