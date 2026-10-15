@@ -7,7 +7,7 @@
 
     <div class="card" style="max-width:600px; margin-bottom:1rem;">
         <p><strong>Cliente:</strong> {{ $cliente->nombre_comercial }}</p>
-        <p><strong>Folio Físico:</strong> {{ $folioFisico }}</p>
+        <p style="color:#6b7280; font-size:.85rem;">El folio se asigna automáticamente al confirmar.</p>
 
         <table class="data-table">
             <thead>
@@ -16,7 +16,18 @@
             <tbody>
                 @foreach ($items as $item)
                     <tr>
-                        <td>{{ $item['servicio']->descripcion }}</td>
+                        <td>
+                            {{ $item['servicio']->descripcion }}
+                            @if ($item['condicion_prenda'] === 'nueva')
+                                <span class="badge" style="background:var(--azul-claro);">Nueva</span>
+                            @endif
+                            @if ($item['color'])
+                                <span class="badge" style="background:#6b7280;">{{ $item['color'] }}</span>
+                            @endif
+                            @if ($item['es_desmanche'])
+                                <span class="badge" style="background:var(--amarillo);">Desmanche</span>
+                            @endif
+                        </td>
                         <td>{{ $item['cantidad'] }}</td>
                     </tr>
                 @endforeach
@@ -106,13 +117,16 @@
                 trazado = false;
             });
 
-            document.getElementById('form-confirmar').addEventListener('submit', function (e) {
-                if (!trazado) {
-                    e.preventDefault();
-                    alert('Falta la firma del cliente.');
-                    return;
-                }
-                document.getElementById('firma-input').value = canvas.toDataURL('image/png');
+            EnvioResiliente.proteger(document.getElementById('form-confirmar'), {
+                etiqueta: 'tu pedido',
+                antesDeEnviar: function () {
+                    if (!trazado) {
+                        alert('Falta la firma del cliente.');
+                        return false;
+                    }
+                    document.getElementById('firma-input').value = canvas.toDataURL('image/png');
+                    return true;
+                },
             });
 
             if (navigator.geolocation) {

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Operaciones;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ServicioRequest;
 use App\Models\Servicio;
+use App\Support\Busqueda;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -14,9 +16,15 @@ use Illuminate\View\View;
  */
 class ServicioController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $servicios = Servicio::orderBy('categoria')->orderBy('descripcion')->paginate(20);
+        // #2 del lote de último momento: la búsqueda de productos se limita
+        // a la descripción, no a la categoría — mismo criterio aquí.
+        $servicios = Busqueda::porPalabras(Servicio::query(), ['descripcion'], $request->input('buscar'))
+            ->orderBy('categoria')
+            ->orderBy('descripcion')
+            ->paginate(20)
+            ->withQueryString();
 
         return view('operaciones.servicios.index', compact('servicios'));
     }
@@ -28,7 +36,9 @@ class ServicioController extends Controller
 
     public function store(ServicioRequest $request): RedirectResponse
     {
-        Servicio::create($request->validated());
+        // Un checkbox sin marcar no manda el campo — se castea aparte para
+        // que "desmarcar" sí se guarde como false y no se quede pegado.
+        Servicio::create($request->validated() + ['requiere_color' => $request->boolean('requiere_color')]);
 
         return redirect()->route('operaciones.servicios.index')->with('status', 'Servicio creado correctamente.');
     }
@@ -40,7 +50,7 @@ class ServicioController extends Controller
 
     public function update(ServicioRequest $request, Servicio $servicio): RedirectResponse
     {
-        $servicio->update($request->validated());
+        $servicio->update($request->validated() + ['requiere_color' => $request->boolean('requiere_color')]);
 
         return redirect()->route('operaciones.servicios.index')->with('status', 'Servicio actualizado correctamente.');
     }

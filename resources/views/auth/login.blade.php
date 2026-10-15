@@ -5,6 +5,16 @@
     <title>Vital Clean — Acceso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    {{--
+        Para tabletas dedicadas en modo kiosco (ej. Fully Kiosk Browser, o
+        "Agregar a pantalla de inicio" de Chrome): con esto, al abrirse
+        como app instalada, se ve a pantalla completa sin barra de
+        direcciones ni controles del navegador.
+    --}}
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#26437D">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="{{ asset('images/icon-192.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
@@ -53,8 +63,16 @@
             font-size: 1.05rem;
             border: 1px solid #d1d5db;
             border-radius: .375rem;
-            margin-bottom: 1rem;
         }
+        .campo-password { position: relative; margin-bottom: 1rem; }
+        .campo-password input { margin-bottom: 0; padding-right: 2.6rem; }
+        .btn-ver-password {
+            position: absolute; top: 0; right: 0; bottom: 0;
+            width: 2.6rem; background: transparent; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; color: #6b7280;
+            padding: 0;
+        }
+        .btn-ver-password:hover { color: var(--azul); }
         .remember { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; font-size: .9rem; }
         .remember input { width: auto; margin: 0; }
         button.btn-login {
@@ -103,7 +121,15 @@
                    placeholder="Ej. vendedor.vitalclean" autofocus required>
 
             <label for="password">Contraseña</label>
-            <input type="password" id="password" name="password" required>
+            <div class="campo-password">
+                <input type="password" id="password" name="password" required>
+                <button type="button" class="btn-ver-password" id="btn-ver-password" aria-label="Mostrar contraseña" tabindex="-1">
+                    <svg id="icono-ojo" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+            </div>
 
             <label class="remember">
                 <input type="checkbox" name="remember" value="1"> Recordar usuario
@@ -112,5 +138,22 @@
             <button type="submit" class="btn-login">Iniciar Sesión</button>
         </form>
     </div>
+
+    <script>
+        (function () {
+            var input = document.getElementById('password');
+            var boton = document.getElementById('btn-ver-password');
+            var icono = document.getElementById('icono-ojo');
+            var ojoTachado = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/><line x1="2" y1="2" x2="22" y2="22"/>';
+            var ojoNormal = icono.innerHTML;
+
+            boton.addEventListener('click', function () {
+                var visible = input.type === 'text';
+                input.type = visible ? 'password' : 'text';
+                icono.innerHTML = visible ? ojoNormal : ojoTachado;
+                boton.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+            });
+        })();
+    </script>
 </body>
 </html>

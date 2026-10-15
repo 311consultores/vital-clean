@@ -21,6 +21,9 @@ class DetalleRemision extends Model
         'precio_aplicado',
         'subtotal',
         'observacion_prenda',
+        'condicion_prenda',
+        'color',
+        'es_desmanche',
     ];
 
     protected function casts(): array
@@ -28,6 +31,7 @@ class DetalleRemision extends Model
         return [
             'precio_aplicado' => 'decimal:2',
             'subtotal' => 'decimal:2',
+            'es_desmanche' => 'boolean',
         ];
     }
 

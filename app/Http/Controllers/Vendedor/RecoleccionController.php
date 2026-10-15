@@ -7,7 +7,9 @@ use App\Http\Requests\RecoleccionRequest;
 use App\Models\Cliente;
 use App\Models\NotaRemision;
 use App\Models\Servicio;
+use App\Support\Idempotencia;
 use App\Support\WhatsApp;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,12 +27,45 @@ class RecoleccionController extends Controller
 {
     protected const SESSION_KEY = 'recoleccion_pendiente';
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $clientes = Cliente::where('estatus_credito', true)->orderBy('nombre_comercial')->get();
-        $servicios = Servicio::orderBy('categoria')->orderBy('descripcion')->get();
+
+        // Si venimos de un error de validación, se reconstruye el catálogo
+        // del cliente ya elegido para no perder el carrito armado (ver script
+        // de la vista, CANTIDADES_PREVIAS).
+        $servicios = old('id_cliente')
+            ? $this->serviciosDelCliente((int) old('id_cliente'))
+            : collect();
 
         return view('vendedor.recoleccion.create', compact('clientes', 'servicios'));
+    }
+
+    /**
+     * Bug: los precios se calculan por tarifa pactada por cliente (RN-01),
+     * así que el buscador de prendas solo debe ofrecer lo que el cliente
+     * tiene tarifado — evita levantar pedidos con artículos sin precio.
+     */
+    public function serviciosCliente(Cliente $cliente): JsonResponse
+    {
+        return response()->json(
+            $this->serviciosDelCliente($cliente->id_cliente)
+                ->map(fn (Servicio $s) => [
+                    'id' => $s->id_servicio,
+                    'descripcion' => $s->descripcion,
+                    'categoria' => $s->categoria,
+                    'unidad' => $s->unidad,
+                    'requiere_color' => $s->requiere_color,
+                ])
+        );
+    }
+
+    protected function serviciosDelCliente(int $idCliente)
+    {
+        return Servicio::whereHas('tarifas', fn ($q) => $q->where('id_cliente', $idCliente))
+            ->orderBy('categoria')
+            ->orderBy('descripcion')
+            ->get();
     }
 
     public function store(RecoleccionRequest $request): RedirectResponse
@@ -40,10 +75,15 @@ class RecoleccionController extends Controller
             ->map(fn ($cantidad) => (int) $cantidad);
 
         $request->session()->put(self::SESSION_KEY, [
-            'folio_fisico' => $request->input('folio_fisico'),
             'id_cliente' => (int) $request->input('id_cliente'),
             'fecha_entrega_prog' => $request->input('fecha_entrega_prog'),
             'cantidades' => $cantidades->all(),
+            // #5/#11/#12: un modificador por prenda (no por unidad
+            // individual) — nueva/usada, color (si la prenda lo requiere) y
+            // si el desmanche aplica a esa prenda en este pedido.
+            'condicion' => $request->input('condicion', []),
+            'color' => $request->input('color', []),
+            'desmanche' => collect($request->input('desmanche', []))->map(fn ($v) => (bool) $v)->all(),
         ]);
 
         return redirect()->route('vendedor.recoleccion.resumen');
@@ -64,6 +104,9 @@ class RecoleccionController extends Controller
         $items = collect($pendiente['cantidades'])->map(fn ($cantidad, $idServicio) => [
             'servicio' => $servicios[$idServicio],
             'cantidad' => $cantidad,
+            'condicion_prenda' => $pendiente['condicion'][$idServicio] ?? null,
+            'color' => $pendiente['color'][$idServicio] ?? null,
+            'es_desmanche' => $pendiente['desmanche'][$idServicio] ?? false,
         ])->values();
 
         $totalPiezas = $items->sum('cantidad');
@@ -72,15 +115,24 @@ class RecoleccionController extends Controller
             'cliente' => $cliente,
             'items' => $items,
             'totalPiezas' => $totalPiezas,
-            'folioFisico' => $pendiente['folio_fisico'],
         ]);
     }
 
     public function confirmar(Request $request): RedirectResponse
     {
+        $claveIdempotencia = $request->input('idempotency_key');
         $pendiente = $request->session()->get(self::SESSION_KEY);
 
         if (! $pendiente) {
+            // Reintento de un envío que ya se había procesado con éxito
+            // antes (la sesión se vació en ese primer intento aunque su
+            // respuesta se perdiera por la señal — ver
+            // public/js/envio-resiliente.js) — no es un error real.
+            if ($claveIdempotencia && DB::table('idempotency_keys')->where('clave', $claveIdempotencia)->exists()) {
+                return redirect()->route('vendedor.pedidos.index')
+                    ->with('status', 'Este pedido ya se había registrado — lo encuentras en tu listado.');
+            }
+
             return redirect()->route('vendedor.recoleccion.create')
                 ->with('error', 'No hay un pedido en curso. Empieza de nuevo.');
         }
@@ -102,9 +154,20 @@ class RecoleccionController extends Controller
 
         $firmaBinaria = base64_decode(substr($request->input('firma'), strlen('data:image/png;base64,')));
 
-        $nota = DB::transaction(function () use ($pendiente, $firmaBinaria, $request) {
+        $nota = DB::transaction(function () use ($pendiente, $firmaBinaria, $request, $claveIdempotencia) {
+            // Envío resiliente a conexión intermitente (ver
+            // public/js/envio-resiliente.js): si esta firma ya se procesó
+            // en un intento anterior cuya respuesta se perdió, no se
+            // duplica el folio.
+            if (! Idempotencia::reclamar($claveIdempotencia, $request->user()->id_usuario, 'recoleccion.confirmar')) {
+                return null;
+            }
+
+            // folio_fisico es NOT NULL y depende de folio_sistema (autoincrement),
+            // que solo existe una vez insertada la fila: se crea con un valor
+            // temporal y se reemplaza de inmediato por el folio autogenerado.
             $nota = NotaRemision::create([
-                'folio_fisico' => $pendiente['folio_fisico'],
+                'folio_fisico' => 'PENDIENTE',
                 'id_cliente' => $pendiente['id_cliente'],
                 'id_vendedor' => $request->user()->id_usuario,
                 'fecha_recoleccion' => now(),
@@ -120,13 +183,27 @@ class RecoleccionController extends Controller
                 $nota->detalle()->create([
                     'id_servicio' => $idServicio,
                     'cantidad_entrada' => $cantidad,
+                    'condicion_prenda' => $pendiente['condicion'][$idServicio] ?? null,
+                    'color' => $pendiente['color'][$idServicio] ?? null,
+                    'es_desmanche' => $pendiente['desmanche'][$idServicio] ?? false,
                 ]);
             }
+
+            $nota->update(['folio_fisico' => $nota->folio_display]);
 
             return $nota;
         });
 
         $request->session()->forget(self::SESSION_KEY);
+
+        if (! $nota) {
+            // Duplicado: esta firma ya había creado un folio en un intento
+            // anterior. No sabemos aquí cuál es (no se buscó a propósito,
+            // para no complicar el caso común), pero el vendedor lo
+            // encuentra en su listado.
+            return redirect()->route('vendedor.pedidos.index')
+                ->with('status', 'Este pedido ya se había registrado — lo encuentras en tu listado.');
+        }
 
         return redirect()->route('vendedor.recoleccion.exito', $nota);
     }
@@ -140,6 +217,7 @@ class RecoleccionController extends Controller
         return view('vendedor.recoleccion.exito', [
             'nota' => $notaRemision,
             'whatsappUrl' => WhatsApp::linkRecoleccion($notaRemision),
+            'whatsappMensaje' => WhatsApp::mensajeRecoleccion($notaRemision),
             'pdfUrl' => WhatsApp::linkPdf($notaRemision),
         ]);
     }

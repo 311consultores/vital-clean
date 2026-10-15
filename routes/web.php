@@ -124,6 +124,10 @@ Route::middleware(['auth', 'role:VENDEDOR'])
         // CU-01: Levantamiento de Orden en Sitio (Anexo App, pantallas 02-08).
         Route::prefix('recoleccion')->name('recoleccion.')->group(function () {
             Route::get('/', [RecoleccionController::class, 'create'])->name('create');
+            // Bug: los precios se calculan por tarifa pactada por cliente
+            // (RN-01), así que solo debe poder agregarse al pedido lo que el
+            // cliente tiene tarifado; se consulta por AJAX al elegir cliente.
+            Route::get('/servicios/{cliente}', [RecoleccionController::class, 'serviciosCliente'])->name('servicios');
             Route::post('/', [RecoleccionController::class, 'store'])->name('store');
             Route::get('/resumen', [RecoleccionController::class, 'resumen'])->name('resumen');
             Route::post('/confirmar', [RecoleccionController::class, 'confirmar'])->name('confirmar');

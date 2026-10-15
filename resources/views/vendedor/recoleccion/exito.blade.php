@@ -7,8 +7,7 @@
         <div style="font-size:2.5rem; color:#28a745;">✓</div>
         <h1 style="color:#28a745;">¡Pedido creado exitosamente!</h1>
         <p><strong>Cliente:</strong> {{ $nota->cliente->nombre_comercial }}</p>
-        <p><strong>Folio Sistema:</strong> VC-{{ str_pad($nota->folio_sistema, 4, '0', STR_PAD_LEFT) }}</p>
-        <p><strong>Folio Físico:</strong> {{ $nota->folio_fisico }}</p>
+        <p><strong>Folio:</strong> {{ $nota->folio_display }}</p>
         <p><strong>Total de piezas:</strong> {{ $nota->detalle->sum('cantidad_entrada') }}</p>
 
         @if ($whatsappUrl)
@@ -22,6 +21,7 @@
                 que lo agregue en Clientes para poder enviarle la nota por WhatsApp.
             </div>
         @endif
+        @include('partials.whatsapp-otro-numero', ['mensaje' => $whatsappMensaje])
 
         <div class="form-actions" style="justify-content:center;">
             <a href="{{ $pdfUrl }}" target="_blank" rel="noopener" class="btn btn-secondary">📄 Ver PDF</a>
