@@ -36,6 +36,14 @@ Route::post('/logout', [LoginController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+// Instrucciones para instalar el sistema como app (PWA) — siempre
+// disponibles aquí aunque alguien haya cerrado el banner de instalación
+// en su dispositivo, igual que "Configuración › App y avisos" en
+// Reportes 311 Consultores.
+Route::view('/instalar-app', 'instalar-app')
+    ->middleware(['auth', 'role:ADMIN,OPERADOR,VENDEDOR'])
+    ->name('instalar-app');
+
 // PDF de la nota de remisión, para el enlace que va dentro del mensaje de
 // WhatsApp (App\Support\WhatsApp). Pública pero con URL firmada: el cliente
 // externo no tiene cuenta, pero la firma evita que alguien adivine folios
@@ -124,6 +132,10 @@ Route::middleware(['auth', 'role:VENDEDOR'])
         // CU-01: Levantamiento de Orden en Sitio (Anexo App, pantallas 02-08).
         Route::prefix('recoleccion')->name('recoleccion.')->group(function () {
             Route::get('/', [RecoleccionController::class, 'create'])->name('create');
+            // Bug: los precios se calculan por tarifa pactada por cliente
+            // (RN-01), así que solo debe poder agregarse al pedido lo que el
+            // cliente tiene tarifado; se consulta por AJAX al elegir cliente.
+            Route::get('/servicios/{cliente}', [RecoleccionController::class, 'serviciosCliente'])->name('servicios');
             Route::post('/', [RecoleccionController::class, 'store'])->name('store');
             Route::get('/resumen', [RecoleccionController::class, 'resumen'])->name('resumen');
             Route::post('/confirmar', [RecoleccionController::class, 'confirmar'])->name('confirmar');

@@ -38,6 +38,21 @@ class AuthTest extends TestCase
         $response->assertRedirect(route('vendedor.home'));
     }
 
+    public function test_vendedor_home_muestra_las_tres_cards_de_acceso(): void
+    {
+        $vendedor = Usuario::factory()->create(['rol' => 'VENDEDOR']);
+
+        $response = $this->actingAs($vendedor)->get(route('vendedor.home'));
+
+        $response->assertOk();
+        $response->assertSee('Nuevo Pedido');
+        $response->assertSee('Pedidos');
+        $response->assertSee('Cierre de Entrega');
+        $response->assertSee(route('vendedor.recoleccion.create'), false);
+        $response->assertSee(route('vendedor.pedidos.index'), false);
+        $response->assertSee(route('entrega.buscar'), false);
+    }
+
     public function test_invalid_credentials_are_rejected(): void
     {
         Usuario::factory()->create(['username' => 'admin.test']);

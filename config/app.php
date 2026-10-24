@@ -69,6 +69,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Display Timezone
+    |--------------------------------------------------------------------------
+    |
+    | El almacenamiento interno (created_at, fecha_recoleccion, etc.) se
+    | queda en UTC arriba a propósito — no requiere migrar datos y las
+    | comparaciones de fechas (dashboard_ultima_visita, etc.) siguen siendo
+    | correctas. Este valor es solo para MOSTRARLE la hora al usuario en
+    | Mérida (ver Carbon::macro('horaLocal') en AppServiceProvider).
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'America/Merida'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

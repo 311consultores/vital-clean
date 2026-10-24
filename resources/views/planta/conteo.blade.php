@@ -12,7 +12,7 @@
         <div>
             <h1 style="margin-bottom:.2rem;">{{ $orden->cliente->nombre_comercial }}</h1>
             <p style="margin:0; color:#6b7280;">
-                Folio VC-{{ str_pad($orden->folio_sistema, 4, '0', STR_PAD_LEFT) }} / {{ $orden->folio_fisico }}
+                Folio {{ $orden->folio_display }}
             </p>
         </div>
         @if ($orden->conteo_bloqueado)
@@ -77,18 +77,22 @@
                                 @endforeach
 
                                 @unless ($soloLectura)
-                                    <details>
-                                        <summary style="cursor:pointer; font-size:.85rem; color:var(--azul);">+ Reportar daño</summary>
-                                        <div style="margin-top:.4rem; display:flex; flex-direction:column; gap:.3rem; max-width:220px;">
+                                    @php $tieneErrorEstaLinea = $errors->has('foto.'.$linea->id_detalle) || old('dano.'.$linea->id_detalle) || old('comentario_dano.'.$linea->id_detalle); @endphp
+                                    <details @if ($tieneErrorEstaLinea) open @endif>
+                                        <summary class="btn-pill">+ Reportar daño</summary>
+                                        <div style="margin-top:.5rem; display:flex; flex-direction:column; gap:.3rem; max-width:220px;">
                                             <select name="dano[{{ $linea->id_detalle }}]">
                                                 <option value="">— Tipo de daño —</option>
-                                                <option value="Quemado">Quemado</option>
-                                                <option value="Mancha">Mancha</option>
-                                                <option value="Roto">Roto</option>
-                                                <option value="Otro">Otro</option>
+                                                @foreach (['Quemado', 'Mancha', 'Roto', 'Otro'] as $tipo)
+                                                    <option value="{{ $tipo }}" @selected(old('dano.'.$linea->id_detalle) === $tipo)>{{ $tipo }}</option>
+                                                @endforeach
                                             </select>
-                                            <input type="text" name="comentario_dano[{{ $linea->id_detalle }}]" placeholder="Nota (opcional)" maxlength="255">
-                                            <input type="file" name="foto[{{ $linea->id_detalle }}]" accept="image/*" capture="environment">
+                                            <input type="text" name="comentario_dano[{{ $linea->id_detalle }}]" placeholder="Nota (opcional)" maxlength="255"
+                                                   value="{{ old('comentario_dano.'.$linea->id_detalle) }}">
+                                            <input type="file" name="foto[{{ $linea->id_detalle }}]" accept="image/*" capture="environment" class="foto-incidencia">
+                                            @error('foto.'.$linea->id_detalle)
+                                                <div class="field-error">{{ $message }}</div>
+                                            @enderror
                                         </div>
                                     </details>
                                 @endunless
@@ -112,4 +116,8 @@
             </div>
         @endif
     </form>
+
+    @unless ($soloLectura)
+        @include('partials.compresor-fotos')
+    @endunless
 @endsection
