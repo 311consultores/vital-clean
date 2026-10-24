@@ -71,12 +71,12 @@
         /* #11: campanita de notificaciones — estilo "burbuja" tipo redes
            sociales (Instagram/Facebook): ícono con un punto/número rojo
            sobrepuesto en la esquina cuando hay pedidos nuevos. */
-        .header-bell {
+        .header-bell, .header-install-btn {
             position: relative; display: inline-flex; align-items: center;
             justify-content: center; color: var(--blanco); flex-shrink: 0;
             padding: .3rem; border-radius: 999px;
         }
-        .header-bell:hover { background: rgba(255,255,255,.12); }
+        .header-bell:hover, .header-install-btn:hover { background: rgba(255,255,255,.12); }
         .header-bell-badge {
             position: absolute; top: -2px; right: -2px;
             background: var(--rojo); color: var(--blanco);
@@ -308,6 +308,12 @@
                 @endif
                 <span class="header-user-name">{{ auth()->user()->nombre_completo ?? auth()->user()->username }}</span>
                 <span class="badge badge-{{ strtolower(auth()->user()->rol) }}">{{ auth()->user()->rol }}</span>
+                <a href="{{ route('instalar-app') }}" class="header-install-btn" title="Instalar la App">
+                    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="5" y="2" width="14" height="20" rx="2"/>
+                        <line x1="11" y1="18" x2="13" y2="18"/>
+                    </svg>
+                </a>
                 <form method="POST" action="{{ route('logout') }}" style="margin:0;">
                     @csrf
                     <button type="submit" class="btn btn-logout" title="Salir">
@@ -428,5 +434,7 @@
             })();
         </script>
     @endauth
+
+    @include('partials.banner-instalar-app')
 </body>
 </html>

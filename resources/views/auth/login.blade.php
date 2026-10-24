@@ -155,5 +155,7 @@
             });
         })();
     </script>
+
+    @include('partials.banner-instalar-app')
 </body>
 </html>

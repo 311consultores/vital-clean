@@ -36,6 +36,14 @@ Route::post('/logout', [LoginController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+// Instrucciones para instalar el sistema como app (PWA) — siempre
+// disponibles aquí aunque alguien haya cerrado el banner de instalación
+// en su dispositivo, igual que "Configuración › App y avisos" en
+// Reportes 311 Consultores.
+Route::view('/instalar-app', 'instalar-app')
+    ->middleware(['auth', 'role:ADMIN,OPERADOR,VENDEDOR'])
+    ->name('instalar-app');
+
 // PDF de la nota de remisión, para el enlace que va dentro del mensaje de
 // WhatsApp (App\Support\WhatsApp). Pública pero con URL firmada: el cliente
 // externo no tiene cuenta, pero la firma evita que alguien adivine folios
